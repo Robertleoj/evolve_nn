@@ -18,6 +18,8 @@
 import torch
 import torch.nn as nn
 import networkx as nx
+from graphviz import Digraph
+from IPython.display import display, SVG
 
 
 # %%
@@ -102,7 +104,7 @@ class AddNode(OperatorNode):
     name = "add"
 
     def forward(self, inputs: list[torch.Tensor]) -> list[torch.Tensor]:
-        return sum(inputs)
+        return [sum(inputs)]
 
 class MatmulNode(OperatorNode):
 
@@ -166,6 +168,8 @@ def reverse_adjacency_list(adj_list: list[list[int]]) -> list[list[int]]:
 
 
 # %%
+
+# %%
 class Graph:
     nodes: list[Node]
     adjacency_list: list[list[int]]
@@ -206,9 +210,119 @@ class Graph:
             for edge in ordered_edge_list
         }
 
-    def __repr__(self) -> str:
-        return f"Graph(\n\t{self.nodes}, {self.ordered_edge_list})"
+    def _get_label(self, node: Node) -> str:
+        if isinstance(node, DataNode):
+            shape_info =  str(node.shape)
+        elif isinstance(node, OperatorNode):
+            input_shape_info = " x ".join(str(shape) for shape in node.input_shapes)
+            output_shape_info = " x ".join(str(shape) for shape in node.output_shapes)
+            shape_info = f"{input_shape_info} -> {output_shape_info}"
 
+        return f"{node.name}\n{shape_info}"
+
+    def show(self) -> str:
+        dot = Digraph()
+        
+        for i, node in enumerate(self.nodes):
+            label = self._get_label(node)
+            if isinstance(node, DataNode):
+                dot.node(str(i), label=label)
+            elif isinstance(node, OperatorNode):
+
+                dot.node(str(i), label=label, shape='box')
+
+        for edge in self.ordered_edge_list:
+            dot.edge(str(edge[0][0]), str(edge[0][1]), label=str(edge[1]))
+
+        svg = dot.pipe(format='svg').decode('utf-8')
+        display(SVG(svg))
+
+
+
+# %%
+class CompiledGraph(nn.Module):
+
+    def __init__(
+        self, 
+        nodes: list[Node],
+        topsorted: list[int], 
+        input_nodes: list[int], 
+        output_nodes: list[int], 
+        rev_adjacency_list: list[list[int]],
+        edge_indices: dict[tuple[int, int]: int]
+    ) -> None:
+        super().__init__()
+        self.nodes = nn.ModuleList(nodes)
+        self.topsorted = topsorted
+        self.input_nodes = input_nodes
+        self.output_nodes = output_nodes
+        self.rev_adjacency_list = rev_adjacency_list
+        self.edge_indices = edge_indices
+
+    @classmethod
+    def from_graph(cls, graph: Graph) -> "CompiledGraph":
+
+        input_nodes = [
+            i for i, node in enumerate(graph.nodes)
+            if isinstance(node, InputNode)
+        ]
+
+        output_nodes = [
+            i for i, node in enumerate(graph.nodes)
+            if isinstance(node, OutputNode)
+        ]
+        
+        return cls(
+            graph.nodes,
+            graph.topsorted,
+            input_nodes,
+            output_nodes,
+            graph.rev_adjacency_list,
+            graph.edge_indices
+        )
+
+    def forward(self, inputs: list[torch.Tensor]) -> list[torch.Tensor]:
+        data = [None for _ in range(len(self.nodes))]
+
+        for node_idx, input in zip(self.input_nodes, inputs):
+            data[node_idx] = input
+
+        for node_idx in self.topsorted:
+            if data[node_idx] is not None:
+                assert node_idx in self.input_nodes
+                continue
+
+            self._infer_node(node_idx, data)
+            print(data)
+
+        return [data[node_idx] for node_idx in self.output_nodes]
+
+
+    def _infer_data_node(self, node_idx, data):
+        # get data from output node
+        output_node_idx = self.rev_adjacency_list[node_idx][0]
+        output_idx = self.edge_indices[(output_node_idx, node_idx)]
+
+        data[node_idx] = data[output_node_idx][output_idx]
+
+    def _infer_node(self, node_idx, data):
+        node = self.nodes[node_idx]
+        if isinstance(node, DataNode):
+            self._infer_data_node(node_idx, data)
+            return
+
+        input_node_indices = self.rev_adjacency_list[node_idx]
+        input_data = [None for _ in input_node_indices]
+
+        for input_node_idx in input_node_indices:
+            edge = (input_node_idx, node_idx)
+            input_index = self.edge_indices[edge]
+            input_data[input_index] = data[input_node_idx]
+
+        data[node_idx] = node(input_data)
+
+       
+            
 
 
 # %%
@@ -254,4 +368,10 @@ sample_graph_spec = {
 
 # %%
 graph = Graph(**sample_graph_spec)
-graph
+graph.show()
+
+# %%
+compiled = CompiledGraph.from_graph(graph)
+
+# %%
+compiled([torch.tensor([-4, 2]), torch.tensor([2, 4])])
