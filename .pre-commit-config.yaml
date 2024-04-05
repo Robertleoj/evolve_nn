@@ -1,0 +1,42 @@
+repos:
+  - repo: 'https://github.com/pre-commit/pre-commit-hooks'
+    rev: v2.3.0
+    hooks:
+      - id: check-yaml
+      - id: check-json
+      - id: end-of-file-fixer
+      - id: trailing-whitespace
+  - repo: local
+    hooks:
+      - id: ruff
+        name: ruff
+        entry: ruff
+        args:
+          - 'check'
+          - '--fix'
+          - '--exit-non-zero-on-fix'
+        language: system
+        pass_filenames: true
+        types: [python]
+  - repo: local
+    hooks:
+      - id: black
+        name: black
+        entry: "black ."
+        language: system
+        pass_filenames: false
+  - repo: local
+    hooks:
+      - id: pytest-check
+        name: pytest-check
+        entry: pytest
+        language: system
+        pass_filenames: false
+        stages: [push]
+  - repo: local
+    hooks:
+      - id: clang-format-hook
+        name: "clang-format"
+        entry: "./tools/run_clang_format.py"
+        language: system
+        pass_filenames: false

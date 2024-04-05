@@ -1,0 +1,104 @@
+[tool.poetry]
+name = "project"
+version = "0.1.0"
+description = ""
+authors = ["Robert Leo <robert.leo.jonsson@gmail.com>"]
+readme = "README.md"
+packages = [{include = "project", from = "src"}]
+
+[tool.poetry.dependencies]
+python = "3.10.*"
+fire = "^0.5.0"
+tyro = "^0.6.0"
+mypy = "^1.9.0"
+flags = "^0.0.1.2"
+
+[tool.poetry.group.dev.dependencies]
+jupyterlab = "^3.6.2"
+black = {extras = ["jupyter"], version = "^23.1.0"}
+ipython = "^8.11.0"
+isort = "^5.12.0"
+ruff = "^0.0.259"
+pre-commit = "^3.2.1"
+myst-parser = "^1.0.0"
+pytest = "^7.2.2"
+jupytext = "^1.14.5"
+sybil = "^5.0.3"
+
+
+[tool.poetry.group.third_party.dependencies]
+munkres = "1.1.4"
+ffmpeg = "^1.4"
+
+[tool.ruff]
+# Enable pycodestyle (`E`) and Pyflakes (`F`) codes by default.
+select = ["D", "E", "F", "I"]
+ignore = ["D100", "D101", "D104"]
+
+# Allow autofix for all enabled rules (when `--fix`) is provided.
+fixable = ["A", "B", "C", "D", "E", "F", "I"]
+unfixable = []
+
+exclude = [
+    ".eggs",
+    ".git",
+    ".mypy_cache",
+    ".ruff_cache",
+    "__pypackages__",
+    "_build",
+    "build",
+    "dist",
+    "external",
+    "attic"
+]
+per-file-ignores = {}
+
+# Same as Black.
+line-length = 120
+
+# Allow unused variables when underscore-prefixed.
+dummy-variable-rgx = "^(_+|(_+[a-zA-Z0-9_]*[a-zA-Z0-9]+?))$"
+
+# Assume Python 3.10.
+target-version = "py310"
+
+[tool.ruff.mccabe]
+# Unlike Flake8, default to a complexity level of 10.
+max-complexity = 10
+
+[tool.isort]
+profile = "black"
+extend_skip = ["external", "attic"]
+
+[tool.ruff.pydocstyle]
+convention = "google"
+
+
+[tool.black]
+line-length = 120
+target-version = ['py310']
+include = '\.pyi?$'
+exclude = '''
+/(
+    \.eggs
+  | \.git
+  | \.mypy_cache
+  | _build
+  | buck-out
+  | build
+  | dist
+  | external
+  | attic
+)/
+'''
+
+[tool.pytest.ini_options]
+testpaths = ["tests", "src/project/utils"]
+# we use Sybil to find doctests.
+# by default, don't run end_to_end_workstation tests
+addopts = "-p no:doctest --strict-markers"
+markers = []
+
+[build-system]
+requires = ["poetry-core"]
+build-backend = "poetry.core.masonry.api"
