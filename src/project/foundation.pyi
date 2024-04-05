@@ -2,9 +2,10 @@ def add(a: int, b: int) -> int:
     """add(a: int, b: int) -> int
 
 
-            Add two numbers
-  
+    Add two numbers
+
     """
+
 def set_spdlog_level(arg0: str) -> None:
     """set_spdlog_level(arg0: str) -> None
 

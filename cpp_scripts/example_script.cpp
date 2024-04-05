@@ -8,6 +8,6 @@ int main() {
             << " and"
             << " " << b
             << " is"
-            << " " 
+            << " "
             << foundation::add(1, 2) << std::endl;
 }

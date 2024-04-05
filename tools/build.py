@@ -14,14 +14,28 @@ BUILD_DIR = "build"
 MODULE_NAME = "foundation.cpython-310-x86_64-linux-gnu.so"
 
 
-def has_executable(path):
+def has_executable(path: Path) -> bool:
+    """Check if a directory has an executable file in it.
+
+    Args:
+        path: Path to the directory.
+
+    Returns:
+        bool: True if the directory has an executable file.
+    """
     for item in path.rglob("*"):
         if item.is_file() and os.access(item, os.X_OK):
             return True
     return False
 
 
-def symlink_executables(source_dir, target_dir):
+def symlink_executables(source_dir: Path, target_dir: Path) -> None:
+    """Symlink executables from source to target directory.
+
+    Args:
+        source_dir: Path to the source directory.
+        target_dir: Path to the target directory.
+    """
     source_dir = Path(source_dir).resolve()
     target_dir = Path(target_dir).resolve()
 
@@ -75,6 +89,7 @@ def build() -> None:
         ["stubgen", "-p", "foundation", "-o", "./src/project", "--include-docstring"],
         env=dict(os.environ, PYTHONPATH="./src/project"),
     )
+
 
 def clean() -> None:
     """Clean the build folder and remove the symlink, if any."""
