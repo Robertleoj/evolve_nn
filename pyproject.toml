@@ -17,6 +17,8 @@ numpy = "^1.26.4"
 networkx = "^3.2.1"
 matplotlib = "^3.8.4"
 graphviz = "^0.20.3"
+einops = "^0.7.0"
+tqdm = "^4.66.2"
 
 [tool.poetry.group.dev.dependencies]
 jupyterlab = "^3.6.2"

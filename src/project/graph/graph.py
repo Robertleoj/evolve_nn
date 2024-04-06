@@ -10,12 +10,14 @@ TODO: check that:
 * Operator nodes only point to Data nodes
 * Data nodes only point to Operator nodes
 """
+import math
+
 import networkx as nx
 import torch
 import torch.nn as nn
 from graphviz import Digraph
 from IPython.display import SVG, display
-from project.graph.nodes import DataNode, InputNode, Node, OperatorNode, OutputNode, node_from_spec
+from project.graph.nodes import DataNode, InputNode, Node, OperatorNode, OutputNode, ParameterNode, node_from_spec
 
 
 def topsort(adj_list: list[list[int]]) -> list[int]:
@@ -171,6 +173,21 @@ class CompiledGraph(nn.Module):
         self.rev_adjacency_list = rev_adjacency_list
         self.edge_indices = edge_indices
 
+        self._initialize_parameters()
+
+    def _initialize_parameters(self):
+        self._parameters = nn.ParameterDict()
+        for node_id, node in enumerate(self.nodes):
+            if isinstance(node, ParameterNode):
+                self._parameters[str(node_id)] = nn.Parameter(torch.empty(node.shape))
+
+        self.reset_parameters()
+
+    def reset_parameters(self) -> None:
+        """Reset the parameters of the graph."""
+        for param in self._parameters.values():
+            torch.nn.init.kaiming_uniform_(param, a=math.sqrt(5))
+
     @classmethod
     def from_graph(cls, graph: Graph) -> "CompiledGraph":
         """Create a compiled graph from a graph.
@@ -200,16 +217,17 @@ class CompiledGraph(nn.Module):
         """
         data = [None for _ in range(len(self.nodes))]
 
-        for node_idx, input in zip(self.input_nodes, inputs):
-            data[node_idx] = input
+        for node_id, input in zip(self.input_nodes, inputs):
+            data[node_id] = input
+
+        for node_id, param in self._parameters.items():
+            data[int(node_id)] = param
 
         for node_idx in self.topsorted:
             if data[node_idx] is not None:
-                assert node_idx in self.input_nodes
                 continue
 
             self._infer_node(node_idx, data)
-            print(data)
 
         return [data[node_idx] for node_idx in self.output_nodes]
 
