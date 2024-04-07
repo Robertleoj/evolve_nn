@@ -111,13 +111,15 @@ operator_nodes = [
     AddNode,
     ProdNode,
     GELUNode,
-    LogNode,
     ExpNode,
 ]
 
 node_map = {
     node_type.name: node_type
-    for node_type in [InputNode, OutputNode, ParameterNode, AddNode, ProdNode, GELUNode, LogNode, ExpNode]
+    for node_type in [
+        InputNode, 
+        OutputNode, 
+        ParameterNode, AddNode, ProdNode, GELUNode, ExpNode]
 }
 
 

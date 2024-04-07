@@ -24,7 +24,7 @@ import torch.nn as nn
 from einops import rearrange
 from tqdm import tqdm
 import matplotlib.pyplot as plt
-from project.graph_novec import graph, nodes, compiled
+from project.graph_novec import graph, nodes, compiled, mutation
 
 # %%
 graph_spec = {
@@ -55,8 +55,9 @@ net = graph.make_graph(**graph_spec)
 graph.show_graph(net)
 
 # %%
-compiled = compiled.CompiledGraph.from_graph(net)
-compiled([torch.tensor([1, 2, 3])])
+compiled_net = compiled.CompiledGraph.from_graph(net)
+compiled.show_compiled(compiled_net)
+compiled_net([torch.tensor([1, 2, 3])])
 
 # %%
 a = 3
@@ -73,7 +74,7 @@ plt.plot(x, y_clean, color="red")
 
 # %%
 loss_fn = torch.nn.MSELoss()
-optimizer = torch.optim.SGD(compiled.parameters(), lr=1e-3, momentum=0.9)
+optimizer = torch.optim.SGD(compiled_net.parameters(), lr=1e-3, momentum=0.9)
 x_in = rearrange(x, "b -> b")
 targ = rearrange(y, "b -> b")
 
@@ -81,7 +82,7 @@ num_epochs = 1000
 pbar = tqdm(total=num_epochs)
 for i in range(num_epochs):
     optimizer.zero_grad()
-    output = compiled([x_in])[0]
+    output = compiled_net([x_in])[0]
     loss = loss_fn(output, targ)
     loss.backward()
     optimizer.step()
@@ -93,7 +94,7 @@ pbar.close()
 
 # %%
 with torch.no_grad():
-    y_hat = compiled([x_in])[0]
+    y_hat = compiled_net([x_in])[0]
     print(y_hat)
 
 
@@ -105,3 +106,25 @@ plt.plot(x, y_hat, color="green")
 plt.scatter(x, y)
 
 
+
+# %%
+mutated = net
+graph.show_graph(mutated)
+
+# %%
+
+mutated, changed = mutation.expand_edge(mutated)
+print(f"Expanded edge: {changed}")
+mutated, changed = mutation.add_edge(mutated)
+print(f"Added edge: {changed}")
+
+graph.show_graph(mutated)
+
+# %%
+mut_compiled = compiled.CompiledGraph.from_graph(mutated)
+
+# %%
+compiled.show_compiled(mut_compiled)
+
+# %%
+mut_compiled([torch.tensor([1, 2, 3])])

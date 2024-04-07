@@ -12,6 +12,7 @@ TODO: check that:
 """
 import torch
 from dataclasses import dataclass
+from copy import deepcopy
 import torch.nn as nn
 from uuid import uuid4
 from graphviz import Digraph
@@ -63,7 +64,7 @@ def reverse_adjacency_list(adj_list: list[list[int]]) -> list[list[int]]:
     return rev_adj_list
 
 
-@dataclass
+@dataclass(frozen=True)
 class Graph:
     """A computational graph.
 
@@ -81,6 +82,30 @@ class Graph:
     id_to_node: dict[str, Node]
     edge_list: list[tuple[str, str]]
 
+    def add_node(self, node: Node) -> str:
+        self.nodes.append(node)
+        node_id = str(uuid4())
+        self.node_ids.append(node_id)
+        self.id_to_node[node_id] = node
+        return node_id
+
+    def operator_nodes(self) -> list[str]:
+        return [
+            node_id for node_id in self.node_ids 
+            if isinstance(self.id_to_node[node_id], OperatorNode)
+        ]
+
+    def output_nodes(self) -> list[str]:
+        return [
+            node_id for node_id in self.node_ids 
+            if isinstance(self.id_to_node[node_id], OutputNode)
+        ]
+
+    def get_nx(self) -> nx.DiGraph:
+        graph = nx.DiGraph()
+        graph.add_nodes_from(self.node_ids)
+        graph.add_edges_from(self.edge_list)
+        return graph
 
 
 def make_graph(

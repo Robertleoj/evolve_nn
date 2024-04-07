@@ -1,7 +1,9 @@
 import torch.nn as nn
 import torch
-from project.graph_novec.nodes import DataNode, InputNode, Node, OutputNode, ParameterNode
+from graphviz import Digraph
+from project.graph_novec.nodes import DataNode, InputNode, Node, OutputNode, ParameterNode, OperatorNode
 from project.graph_novec.graph import topsort_edge_list, reverse_adjacency_list, Graph
+from IPython.display import SVG, display
 
 
 class CompiledGraph(nn.Module):
@@ -38,8 +40,12 @@ class CompiledGraph(nn.Module):
         """
         super().__init__()
         topsorted = topsort_edge_list(len(nodes), edge_list)
+        topsorted_idx = {
+            node_id: i for i, node_id in enumerate(topsorted)
+        }
 
-        edge_list = [(topsorted[edge[0]], topsorted[edge[1]]) for edge in edge_list]
+        nodes = [nodes[i] for i in topsorted]
+        edge_list = [(topsorted_idx[edge[0]], topsorted_idx[edge[1]]) for edge in edge_list]
 
         adj_list = [[] for _ in range(len(nodes))]
         rev_adj_list = [[] for _ in range(len(nodes))]
@@ -48,8 +54,8 @@ class CompiledGraph(nn.Module):
             adj_list[edge[0]].append(edge[1])
             rev_adj_list[edge[1]].append(edge[0])
 
-        self.nodes = nn.ModuleList([nodes[i] for i in topsorted])
-        self.rev_adjacency_list = reverse_adjacency_list(adj_list)
+        self.nodes = nn.ModuleList(nodes)
+        self.rev_adjacency_list = rev_adj_list
 
         self.input_nodes = [i for i, node in enumerate(nodes) if isinstance(node, InputNode)]
         self.output_nodes = [i for i, node in enumerate(nodes) if isinstance(node, OutputNode)]
@@ -79,9 +85,16 @@ class CompiledGraph(nn.Module):
         Returns:
             CompiledGraph: The compiled graph.
         """
-        node_id_to_node_idx = {node_id: i for i, node_id in enumerate(graph.node_ids)}
+        node_id_to_node_idx = {
+            node_id: i for i, node_id in enumerate(graph.node_ids)
+        }
 
-        edge_list = [(node_id_to_node_idx[edge[0]], node_id_to_node_idx[edge[1]]) for edge in graph.edge_list]
+        edge_list = [
+            (
+                node_id_to_node_idx[edge[0]], 
+                node_id_to_node_idx[edge[1]]
+            ) for edge in graph.edge_list
+        ]
 
         return cls(graph.nodes, edge_list)
 
@@ -128,5 +141,37 @@ class CompiledGraph(nn.Module):
             data[node_id] = data[input_node_id]
             return
 
-        input_data = [data[i] for i in self.rev_adjacency_list[node_id]]
+        input_data = []
+        for i in self.rev_adjacency_list[node_id]:
+            if data[i] is None:
+                print([(i, node) for i, node in enumerate(self.nodes)])
+                raise RuntimeError(f"Inferring node {node_id}: node {i} has not been inferred yet.")
+            input_data.append(data[i])
         data[node_id] = node(input_data)
+
+
+
+def show_compiled(graph: CompiledGraph) -> None:
+    """Show the graph using Graphviz."""
+    dot = Digraph()
+
+    for node_idx, node in enumerate(graph.nodes):
+        label = node.name
+        if isinstance(node, DataNode):
+            dot.node(str(node_idx), label=label)
+        elif isinstance(node, OperatorNode):
+            dot.node(str(node_idx), label=label, shape="box")
+
+    for to_idx, from_indices in enumerate(graph.rev_adjacency_list):
+        for from_idx in from_indices:
+            edge = (from_idx, to_idx)
+            dot.edge(
+                str(from_idx), 
+                str(to_idx), 
+            )
+
+    svg = dot.pipe(format="svg").decode("utf-8")
+    display(SVG(svg))
+
+
+
