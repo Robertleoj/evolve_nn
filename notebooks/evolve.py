@@ -28,7 +28,7 @@ from project.graph_novec.graph import Graph, show_graph
 import math
 
 # %%
-POPULATION_SIZE = 200
+POPULATION_SIZE = 500
 NUM_EPOCHS = 1000
 NUM_MUTATIONS = 10
 
@@ -42,7 +42,8 @@ def mutate(graph: graph.Graph, num_mutations=NUM_MUTATIONS) -> graph.Graph:
         mutation.add_edge,
         mutation.add_parameter,
         mutation.delete_operator,
-        mutation.delete_edge
+        mutation.delete_edge,
+        mutation.delete_parameter
     ]
 
     mutation_probabilities = [
@@ -50,7 +51,8 @@ def mutate(graph: graph.Graph, num_mutations=NUM_MUTATIONS) -> graph.Graph:
         0.6,
         0.3,
         0.1,
-        0.25
+        0.25,
+        0.1
     ]
 
     mutations_performed = 0
@@ -184,6 +186,8 @@ def evolve(population, iterations = 10, num_edges_weight=0.01, num_parameters_we
         fitness_scores, _ = evaluate_population(population, num_edges_weight, num_parameters_weight)
         best_score = min(fitness_scores)
         print(f"Generation {i}, best score: {best_score}")
+        best_individual = population[fitness_scores.index(best_score)]
+        graph.show_graph(best_individual)
         population = select_and_mutate(population, fitness_scores)
     
     fitness_scores, compiled = evaluate_population(population, num_edges_weight, num_parameters_weight)
@@ -196,7 +200,7 @@ def evolve(population, iterations = 10, num_edges_weight=0.01, num_parameters_we
 population = initialize_population(POPULATION_SIZE)
 
 # %%
-evolved = evolve(population, 10, num_edges_weight=1e-6, num_parameters_weight=1e-6)
+evolved = evolve(population, 1000, num_edges_weight=1e-6, num_parameters_weight=1e-6)
 population = [individual for _, individual, _ in evolved]
 
 # %%

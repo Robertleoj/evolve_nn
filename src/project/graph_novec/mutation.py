@@ -173,6 +173,46 @@ def delete_edge(graph: Graph, tries=100) -> tuple[Graph, bool]:
         
     return graph, False
 
+def delete_parameter(graph: Graph, tries=30) -> tuple[Graph, bool]:
+    paramnodes = [
+        node_id for node_id in graph.node_ids
+        if isinstance(graph.id_to_node[node_id], ParameterNode)
+    ]
+
+    if len(paramnodes) == 0:
+        return graph, False
+
+
+    adj_list = graph.adjacency_list()
+    rev_adj_list = graph.adjacency_list(reverse=True)
+    for _ in range(tries):
+
+        random_parameter = random.choice(paramnodes)
+
+        out_neighbors = adj_list[random_parameter]
+
+        can_delete = True
+        for out_neighbor in out_neighbors:
+
+            out_neighbor_in_neighbors = rev_adj_list[out_neighbor]
+
+            if len(set(out_neighbor_in_neighbors)) == 1:
+                can_delete = False
+        if not can_delete:
+            continue
+                
+        graph_copy = deepcopy(graph)
+
+        graph_copy.reset_edge_list([
+            edge for edge in graph_copy.edge_list
+            if random_parameter not in edge
+        ])
+
+        graph_copy.remove_node(random_parameter)
+
+        return graph_copy, True
+
+    return graph, False
 
 def delete_operator(graph: Graph, tries=30) -> tuple[Graph, bool]:
     opnodes = graph.operator_nodes()

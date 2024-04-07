@@ -139,3 +139,5 @@ dmypy.json
 
 cpp_executables/
 .ruff_cache/
+
+external/torch/
