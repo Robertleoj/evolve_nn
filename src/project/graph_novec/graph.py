@@ -64,7 +64,6 @@ def reverse_adjacency_list(adj_list: list[list[int]]) -> list[list[int]]:
     return rev_adj_list
 
 
-@dataclass(frozen=True)
 class Graph:
     """A computational graph.
 
@@ -101,11 +100,29 @@ class Graph:
             if isinstance(self.id_to_node[node_id], OutputNode)
         ]
 
+    def remove_node(self, node_id) -> None:
+        node_idx = self.node_ids.index(node_id)
+        self.nodes.pop(node_idx)
+        self.node_ids.pop(node_idx)
+        del self.id_to_node[node_id]
+
+    def adjacency_list(self, reverse: bool = False) -> dict[str, list[str]]:
+        adj_list = {node_id: [] for node_id in self.node_ids}
+        for (a, b) in self.edge_list:
+            if reverse:
+                b, a = a, b
+            adj_list[a].append(b)
+
+        return adj_list
+
     def get_nx(self) -> nx.DiGraph:
         graph = nx.DiGraph()
         graph.add_nodes_from(self.node_ids)
         graph.add_edges_from(self.edge_list)
         return graph
+
+    def reset_edge_list(self, edge_list: list[str, str]) -> None:
+        self.edge_list = edge_list
 
 
 def make_graph(

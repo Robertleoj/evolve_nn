@@ -22,6 +22,7 @@ import torch
 import torch
 import torch.nn as nn
 from einops import rearrange
+import random
 from tqdm import tqdm
 import matplotlib.pyplot as plt
 from project.graph_novec import graph, nodes, compiled, mutation
@@ -113,18 +114,35 @@ graph.show_graph(mutated)
 
 # %%
 
-mutated, changed = mutation.expand_edge(mutated)
-print(f"Expanded edge: {changed}")
-mutated, changed = mutation.add_edge(mutated)
-print(f"Added edge: {changed}")
+expand_edge_prob = 0.3
+if random.random() < expand_edge_prob:
+    mutated, changed = mutation.expand_edge(mutated)
+    print(f"Expanded edge: {changed}")
+
+
+add_edge_prob = 0.6
+if random.random() < add_edge_prob:
+    mutated, changed = mutation.add_edge(mutated)
+    print(f"Added edge: {changed}")
+
+add_parameter_prob = 0.3
+if random.random() < add_parameter_prob:
+    mutated, changed = mutation.add_parameter(mutated)
+    print(f"Added parameter: {changed}")
+
+delete_operator_prob = 0.1
+if random.random() < delete_operator_prob:
+    mutated, changed = mutation.delete_operator(mutated)
+    print(f"Removed operator: {changed}")
+
+delete_edge_prob = 0.25
+if random.random() < delete_edge_prob:
+    mutated, changed = mutation.delete_edge(mutated)
+    print(f"Removed edge: {changed}")
 
 graph.show_graph(mutated)
 
 # %%
 mut_compiled = compiled.CompiledGraph.from_graph(mutated)
-
-# %%
 compiled.show_compiled(mut_compiled)
-
-# %%
-mut_compiled([torch.tensor([1, 2, 3])])
+mut_compiled([torch.tensor([1.0, 2.0, 3.0])])
