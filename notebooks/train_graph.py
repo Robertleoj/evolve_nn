@@ -53,13 +53,24 @@ graph_spec = {
                 x_dim,
             ),
         },
-        {"name": "matmul", "input_shapes": [(x_dim, x_dim), (x_dim, 1)], "output_shapes": [(x_dim, 1)]},
-        {"name": "hidden", "shape": (x_dim, 1)},
-        {"name": "add", "input_shapes": [(x_dim, 1), (x_dim, 1)], "output_shapes": [(x_dim, 1)]},
+        {"name": "matmul", "input_shapes": [(x_dim, x_dim), (x_dim, 1)], "shape": (x_dim, 1)},
         {"name": "parameter", "shape": (x_dim, 1)},
+        {"name": "add", "input_shapes": [(x_dim, 1), (x_dim, 1)], "shape": (x_dim, 1)},
         {"name": "output", "shape": (x_dim, 1)},
     ],
-    "ordered_edge_list": [((0, 2), 0), ((1, 2), 1), ((2, 3), 0), ((3, 4), 0), ((5, 4), 1), ((4, 6), 0)],
+    "edge_list": [
+        (0, 2), 
+        (1, 2), 
+        (2, 4),
+        (3, 4), 
+        (4, 5)
+    ],
+    "index_map": {
+        (0, 2): 1,
+        (1, 2): 0,
+        (2, 4): 1,
+        (3, 4): 0,
+    }
 }
 
 # %%
@@ -107,7 +118,3 @@ y_hat
 # %%
 plt.plot(x, y_hat, color="green")
 plt.scatter(x, y)
-
-# %%
-display(compiled._parameters["1"], a)
-display(compiled._parameters["5"], b)

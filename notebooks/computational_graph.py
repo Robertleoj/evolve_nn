@@ -25,7 +25,7 @@ import torch
 nodes.node_map
 
 # %%
-add_node = nodes.node_from_spec({"name": "add", "input_shapes": [(1, 2), (1, 2)], "output_shapes": [(1, 2)]})
+add_node = nodes.node_from_spec({"name": "add", "input_shapes": [(1, 2), (1, 2)], "shape": (1, 2)})
 
 # %%
 add_node([torch.tensor([1, 2]), torch.tensor([3, 4])])
@@ -36,15 +36,20 @@ sample_graph_spec = {
     "node_specs": [
         {"name": "input", "shape": (1, 2)},
         {"name": "input", "shape": (1, 2)},
-        {"name": "add", "input_shapes": [(1, 2), (1, 2)], "output_shapes": [(1, 2)]},
-        {
-            "name": "hidden",
-            "shape": (1, 2),
-        },
-        {"name": "relu", "input_shapes": [(1, 2)], "output_shapes": [(1, 2)]},
+        {"name": "add", "input_shapes": [(1, 2), (1, 2)], "shape": (1, 2)},
+        {"name": "relu", "input_shapes": [(1, 2)], "shape": (1, 2)},
         {"name": "output", "shape": (1, 2)},
     ],
-    "ordered_edge_list": [((0, 2), 0), ((1, 2), 1), ((2, 3), 0), ((3, 4), 0), ((4, 5), 0)],
+    "edge_list": [
+        (0, 2), 
+        (1, 2), 
+        (2, 3),
+        (3, 4)
+    ],
+    "index_map": {
+        (0, 2): 0,
+        (1, 2): 1
+    }
 }
 
 

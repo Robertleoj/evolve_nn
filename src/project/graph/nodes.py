@@ -10,6 +10,7 @@ class Node(nn.Module):
     """
 
     name: str
+    shape: tuple[int, ...]
 
     def get_spec(self) -> dict:
         """Return a dictionary representation of the node."""
@@ -34,8 +35,6 @@ class DataNode(Node):
     Attributes:
         shape: Shape of the data.
     """
-
-    shape: tuple[int, ...]
 
     def __init__(self, shape: tuple[int, ...]) -> None:
         """Create a data node.
@@ -79,12 +78,6 @@ class ParameterNode(DataNode):
     name = "parameter"
 
 
-class HiddenNode(DataNode):
-    """A node that represents hidden data."""
-
-    name = "hidden"
-
-
 class OutputNode(DataNode):
     """A node that represents output data."""
 
@@ -101,9 +94,8 @@ class OperatorNode(Node):
     """
 
     input_shapes: tuple[tuple[int, ...]]
-    output_shapes: tuple[tuple[int, ...]]
 
-    def __init__(self, input_shapes: tuple[tuple[int, ...]], output_shapes: tuple[tuple[int, ...]]) -> None:
+    def __init__(self, input_shapes: tuple[tuple[int, ...]], shape: tuple[int, ...]) -> None:
         """Create an operator node.
 
         Args:
@@ -111,10 +103,10 @@ class OperatorNode(Node):
             output_shapes: Shapes of the output tensors.
         """
         super().__init__()
+        self.shape = shape
         self.input_shapes = input_shapes
-        self.output_shapes = output_shapes
 
-    def forward(self, inputs: list[torch.Tensor]) -> list[torch.Tensor]:
+    def forward(self, inputs: list[torch.Tensor]) -> torch.Tensor:
         """Perform the operation.
 
         Args:
@@ -128,12 +120,12 @@ class OperatorNode(Node):
         Returns:
             dict: Dictionary representation of the node.
         """
-        return {"input_shapes": self.input_shapes, "output_shapes": self.output_shapes, "name": self.name}
+        return {"input_shapes": self.input_shapes, "shape": self.shape, "name": self.name}
 
     @classmethod
     def from_spec(cls, spec: dict) -> "OperatorNode":
         """Create an operator node from a dictionary representation."""
-        return cls(spec["input_shapes"], spec["output_shapes"])
+        return cls(spec["input_shapes"], spec["shape"])
 
 
 class AddNode(OperatorNode):
@@ -141,9 +133,9 @@ class AddNode(OperatorNode):
 
     name = "add"
 
-    def forward(self, inputs: list[torch.Tensor]) -> list[torch.Tensor]:
+    def forward(self, inputs: list[torch.Tensor]) -> torch.Tensor:
         """Perform the addition operation."""
-        return [sum(inputs)]
+        return sum(inputs)
 
 
 class MatmulNode(OperatorNode):
@@ -151,9 +143,9 @@ class MatmulNode(OperatorNode):
 
     name = "matmul"
 
-    def forward(self, inputs: list[torch.Tensor]) -> list[torch.Tensor]:
+    def forward(self, inputs: list[torch.Tensor]) -> torch.Tensor:
         """Perform the matrix multiplication operation."""
-        return [torch.matmul(*inputs)]
+        return torch.matmul(*inputs)
 
 
 class ReLuNode(OperatorNode):
@@ -161,14 +153,14 @@ class ReLuNode(OperatorNode):
 
     name = "relu"
 
-    def forward(self, inputs: list[torch.Tensor]) -> list[torch.Tensor]:
+    def forward(self, inputs: list[torch.Tensor]) -> torch.Tensor:
         """Perform the ReLu operation."""
-        return [torch.relu(inputs[0])]
+        return torch.relu(inputs[0])
 
 
 node_map = {
     node_type.name: node_type
-    for node_type in [InputNode, HiddenNode, OutputNode, ParameterNode, AddNode, MatmulNode, ReLuNode]
+    for node_type in [InputNode, OutputNode, ParameterNode, AddNode, MatmulNode, ReLuNode]
 }
 
 
