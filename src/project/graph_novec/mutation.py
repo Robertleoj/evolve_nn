@@ -226,7 +226,6 @@ def delete_operator(graph: Graph, tries=30) -> tuple[Graph, bool]:
         graph_cpy.remove_node(random_operator)
 
         new_adj_list = graph_cpy.adjacency_list()
-        new_rev_adj_list = graph_cpy.adjacency_list(reverse=True)
         all_ok = True
         for node_id in graph_cpy.node_ids:
             # we also want to make sure all parameters point to operators
