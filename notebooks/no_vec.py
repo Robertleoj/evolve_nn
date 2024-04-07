@@ -24,7 +24,7 @@ import torch.nn as nn
 from einops import rearrange
 from tqdm import tqdm
 import matplotlib.pyplot as plt
-from project.graph_novec import graph, nodes
+from project.graph_novec import graph, nodes, compiled
 
 # %%
 graph_spec = {
@@ -51,11 +51,11 @@ b = torch.tensor([2, 3])
 torch.stack([a, b], dim=-1)
 
 # %%
-net = graph.Graph(**graph_spec)
-net.show()
+net = graph.make_graph(**graph_spec)
+graph.show_graph(net)
 
 # %%
-compiled = graph.CompiledGraph.from_graph(net)
+compiled = compiled.CompiledGraph.from_graph(net)
 compiled([torch.tensor([1, 2, 3])])
 
 # %%
