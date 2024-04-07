@@ -10,16 +10,13 @@ TODO: check that:
 * Operator nodes only point to Data nodes
 * Data nodes only point to Operator nodes
 """
-import math
-from collections import defaultdict
-
-import networkx as nx
 import torch
 import torch.nn as nn
+from uuid import uuid4
 from graphviz import Digraph
 from IPython.display import SVG, display
-from project.graph.nodes import DataNode, InputNode, Node, OperatorNode, OutputNode, ParameterNode, node_from_spec
-
+from project.graph_novec.nodes import DataNode, InputNode, Node, OperatorNode, OutputNode, ParameterNode, node_from_name
+import networkx as nx
 
 def topsort_adj_list(adj_list: list[list[int]]) -> list[int]:
     """Topologically sort a graph given its adjacency list.
@@ -78,14 +75,14 @@ class Graph:
     """
 
     nodes: list[Node]
-    edge_list: list[tuple[int, int]]
-    index_map: defaultdict[tuple[int, int], int]
+    node_ids: list[str]
+    id_to_node: dict[str, Node]
+    edge_list: list[tuple[str, str]]
 
     def __init__(
         self,
-        node_specs: list[dict],
+        node_names: list[str],
         edge_list: list[tuple[int, int]],
-        index_map: dict[tuple[int, int], int]
     ) -> None:
         """Make a graph from a list of node specs and an ordered edge list.
 
@@ -95,38 +92,28 @@ class Graph:
             topsorted: List of nodes in topological order. If none, it will be computed.
             rev_adj_list: Reversed adjacency list of the graph. If none, it will be computed.
         """
-
-        self.nodes = [node_from_spec(node) for node in node_specs]
-        self.edge_list = edge_list
-        self.index_map = defaultdict(lambda: 0)
-        self.index_map.update(index_map)
-        
-    def _get_label(self, node: Node) -> str:
-        if isinstance(node, DataNode):
-            shape_info = str(node.shape)
-        elif isinstance(node, OperatorNode):
-            input_shape_info = " x ".join(str(shape) for shape in node.input_shapes)
-            output_shape_info = str(node.shape)
-            shape_info = f"{input_shape_info} -> {output_shape_info}"
-
-        return f"{node.name}\n{shape_info}"
+        self.nodes = [node_from_name(name) for name in node_names]
+        self.node_ids = [str(uuid4()) for _ in self.nodes]
+        self.edge_list = [
+            (self.node_ids[edge[0]], self.node_ids[edge[1]]) for edge in edge_list
+        ]
+        self.id_to_node = dict(zip(self.node_ids, self.nodes))
 
     def show(self) -> None:
         """Show the graph using Graphviz."""
         dot = Digraph()
 
-        for i, node in enumerate(self.nodes):
-            label = self._get_label(node)
+        for node_id, node in zip(self.node_ids, self.nodes):
+            label = node.name
             if isinstance(node, DataNode):
-                dot.node(str(i), label=label)
+                dot.node(node_id, label=label)
             elif isinstance(node, OperatorNode):
-                dot.node(str(i), label=label, shape="box")
+                dot.node(node_id, label=label, shape="box")
 
         for edge in self.edge_list:
             dot.edge(
                 str(edge[0]), 
                 str(edge[1]), 
-                label=str(self.index_map[edge])
             )
 
         svg = dot.pipe(format="svg").decode("utf-8")
@@ -149,13 +136,11 @@ class CompiledGraph(nn.Module):
     input_nodes: list[int]
     output_nodes: list[int]
     rev_adjacency_list: list[list[int]]
-    edge_indices: dict[tuple[int, int], int]
 
     def __init__(
         self,
         nodes: list[Node],
-        edge_list: list[tuple[int, int]],
-        index_map: defaultdict[tuple[int, int], int]
+        edge_list: list[tuple[int, int]]
     ) -> None:
         """Create a compiled graph.
 
@@ -174,6 +159,7 @@ class CompiledGraph(nn.Module):
 
         adj_list = [[] for _ in range(len(nodes))]
         rev_adj_list = [[] for _ in range(len(nodes))]
+
         for edge in edge_list:
             adj_list[edge[0]].append(edge[1])
             rev_adj_list[edge[1]].append(edge[0])
@@ -184,26 +170,20 @@ class CompiledGraph(nn.Module):
         self.input_nodes = [i for i, node in enumerate(nodes) if isinstance(node, InputNode)]
         self.output_nodes = [i for i, node in enumerate(nodes) if isinstance(node, OutputNode)]
 
-        self.index_map = defaultdict(lambda: 0)
-        for (a, b), index in index_map.items():
-            a = topsorted[a]
-            b = topsorted[b]
-            self.index_map[(a, b)] = index
-
         self._initialize_parameters()
 
     def _initialize_parameters(self):
         self._parameters = nn.ParameterDict()
         for node_id, node in enumerate(self.nodes):
             if isinstance(node, ParameterNode):
-                self._parameters[str(node_id)] = nn.Parameter(torch.empty(node.shape))
+                self._parameters[str(node_id)] = nn.Parameter(torch.empty(1))
 
         self.reset_parameters()
 
     def reset_parameters(self) -> None:
         """Reset the parameters of the graph."""
         for param in self._parameters.values():
-            torch.nn.init.kaiming_uniform_(param, a=math.sqrt(5))
+            nn.init.normal_(param, mean=0, std=1)
 
     @classmethod
     def from_graph(cls, graph: Graph) -> "CompiledGraph":
@@ -215,7 +195,11 @@ class CompiledGraph(nn.Module):
         Returns:
             CompiledGraph: The compiled graph.
         """
-        return cls(graph.nodes, graph.edge_list, graph.index_map)
+        node_id_to_node_idx = {node_id: i for i, node_id in enumerate(graph.node_ids)}
+
+        edge_list = [(node_id_to_node_idx[edge[0]], node_id_to_node_idx[edge[1]]) for edge in graph.edge_list]
+
+        return cls(graph.nodes, edge_list)
 
     def forward(self, inputs: list[torch.Tensor]) -> list[torch.Tensor]:
         """Perform inference on the compiled graph.
@@ -260,12 +244,5 @@ class CompiledGraph(nn.Module):
             data[node_id] = data[input_node_id]
             return
 
-        input_node_indices = self.rev_adjacency_list[node_id]
-        input_data = [None for _ in input_node_indices]
-
-        for input_node_idx in input_node_indices:
-            edge = (input_node_idx, node_id)
-            input_index = self.index_map[edge]
-            input_data[input_index] = data[input_node_idx]
-
+        input_data = [data[i] for i in self.rev_adjacency_list[node_id]]
         data[node_id] = node(input_data)
