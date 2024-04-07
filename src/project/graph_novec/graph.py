@@ -64,6 +64,7 @@ def reverse_adjacency_list(adj_list: list[list[int]]) -> list[list[int]]:
     return rev_adj_list
 
 
+@dataclass
 class Graph:
     """A computational graph.
 
@@ -88,6 +89,12 @@ class Graph:
         self.id_to_node[node_id] = node
         return node_id
 
+    def input_nodes(self) -> list[str]:
+        return [
+            node_id for node_id in self.node_ids 
+            if isinstance(self.id_to_node[node_id], InputNode)
+        ]
+
     def operator_nodes(self) -> list[str]:
         return [
             node_id for node_id in self.node_ids 
@@ -98,6 +105,12 @@ class Graph:
         return [
             node_id for node_id in self.node_ids 
             if isinstance(self.id_to_node[node_id], OutputNode)
+        ]
+
+    def data_nodes(self) -> list[str]:
+        return [
+            node_id for node_id in self.node_ids 
+            if isinstance(self.id_to_node[node_id], DataNode)
         ]
 
     def remove_node(self, node_id) -> None:

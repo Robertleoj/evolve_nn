@@ -5,6 +5,43 @@ import random
 import networkx as nx
 from copy import deepcopy
 
+def check_validity(graph: Graph):
+    # 1: the graph must be weakly connected
+    g_nx = graph.get_nx()
+    
+    assert nx.is_weakly_connected(g_nx), "Graph is not weakly connected"
+    
+    # 2: the graph must be acyclic
+    assert nx.is_directed_acyclic_graph(g_nx), "Graph is not acyclic"
+    
+    adj_list = graph.adjacency_list()
+    rev_adj_list = graph.adjacency_list(reverse=True)
+    # 3: input nodes must have no incoming edges
+    for node_id in graph.input_nodes():
+        assert len(rev_adj_list[node_id]) == 0, f"Input node {node_id} has incoming edges"
+
+    # 4: output nodes must have no outgoing edges
+    for node_id in graph.output_nodes():
+        assert len(adj_list[node_id]) == 0, f"Output node {node_id} has outgoing edges"
+        
+    # 5: output nodes must have exactly one incoming edge
+    for node_id in graph.output_nodes():
+        assert len(rev_adj_list[node_id]) == 1, f"Data node {node_id} does not have exactly one incoming edge"
+
+    # 6: Operator nodes have at least one outgoing edge
+    for node_id in graph.operator_nodes():
+        assert len(adj_list[node_id]) > 0, f"Operator node {node_id} does not have outgoing edges"
+
+    # 7: Operator nodes have number of input nodes that is within the bounds
+    for node_id in graph.operator_nodes():
+        lower_bound, upper_bound = graph.id_to_node[node_id].n_inputs
+        n_inputs = len(rev_adj_list[node_id])
+        assert n_inputs >= lower_bound, f"Operator node {node_id} has {n_inputs} inputs, expected at least {lower_bound}"
+        if upper_bound is not None:
+            assert n_inputs <= upper_bound, f"Operator node {node_id} has {n_inputs} inputs, expected at most {upper_bound}"
+    
+    
+
 def available_opnodes(graph: Graph) -> list[str]:
     opnodes = graph.operator_nodes()
     adj_list = graph.adjacency_list(reverse=True)
@@ -77,7 +114,6 @@ def add_parameter(graph: Graph) -> tuple[Graph, bool]:
 
 
 def add_edge(graph: Graph, tries: int = 30) -> tuple[Graph, bool]:
-    g_nx = graph.get_nx()
 
     output_nodes = set(graph.output_nodes())
 
@@ -88,6 +124,10 @@ def add_edge(graph: Graph, tries: int = 30) -> tuple[Graph, bool]:
 
     node_2_candidates = available_opnodes(graph)
 
+    if len(node_1_candidates) == 0 or len(node_2_candidates) == 0:
+        return graph, False
+
+    g_nx = graph.get_nx()
     for _ in range(tries):
         # get a random edge
         node1 = random.choice(node_1_candidates)
@@ -173,19 +213,47 @@ def delete_operator(graph: Graph, tries=30) -> tuple[Graph, bool]:
 
         if not nx.is_weakly_connected(g_nx):
             continue
-        
+
         # graph is weakly connected - we can go ahead and remove the node
 
-        graph = deepcopy(graph)
+        graph_cpy = deepcopy(graph)
 
-        graph.reset_edge_list([
-            edge for edge in graph.edge_list
+        graph_cpy.reset_edge_list([
+            edge for edge in graph_cpy.edge_list
             if random_operator not in edge
         ] + edges_added)
 
-        graph.remove_node(random_operator)
+        graph_cpy.remove_node(random_operator)
 
-        return graph, True
+        new_adj_list = graph_cpy.adjacency_list()
+        new_rev_adj_list = graph_cpy.adjacency_list(reverse=True)
+        all_ok = True
+        for node_id in graph_cpy.node_ids:
+            # we also want to make sure all parameters point to operators
+            if isinstance(graph_cpy.id_to_node[node_id], ParameterNode):
+                if len(new_adj_list[node_id]) == 0:
+                    all_ok = False
+                    break
+                
+                only_has_operator_nodes = True
+                for to_node_id in new_adj_list[node_id]:
+                    if not isinstance(graph_cpy.id_to_node[i], OperatorNode):
+                        only_has_operator_nodes = False
+                        break
+                if not only_has_operator_nodes:
+                    all_ok = False
+                    break
+
+            # all operator nodes must have outgoing edges
+            if isinstance(graph_cpy.id_to_node[node_id], OperatorNode):
+                if len(new_adj_list[node_id]) == 0:
+                    all_ok = False
+                    break
+
+        if not all_ok:
+            continue
+
+        return graph_cpy, True
     
     return graph, False
 
