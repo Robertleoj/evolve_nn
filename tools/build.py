@@ -14,44 +14,6 @@ BUILD_DIR = "build"
 MODULE_NAME = "foundation.cpython-310-x86_64-linux-gnu.so"
 
 
-def has_executable(path: Path) -> bool:
-    """Check if a directory has an executable file in it.
-
-    Args:
-        path: Path to the directory.
-
-    Returns:
-        bool: True if the directory has an executable file.
-    """
-    for item in path.rglob("*"):
-        if item.is_file() and os.access(item, os.X_OK):
-            return True
-    return False
-
-
-def symlink_executables(source_dir: Path, target_dir: Path) -> None:
-    """Symlink executables from source to target directory.
-
-    Args:
-        source_dir: Path to the source directory.
-        target_dir: Path to the target directory.
-    """
-    source_dir = Path(source_dir).resolve()
-    target_dir = Path(target_dir).resolve()
-
-    shutil.rmtree(target_dir, ignore_errors=True)
-
-    if not source_dir.is_dir():
-        raise ValueError("Source directory does not exist or is not a directory")
-
-    for item in source_dir.rglob("*"):
-        if item.is_dir() and has_executable(item):
-            (target_dir / item.relative_to(source_dir)).mkdir(parents=True, exist_ok=True)
-        elif item.is_file() and os.access(item, os.X_OK):
-            target_item = target_dir / item.relative_to(source_dir)
-            target_item.parent.mkdir(parents=True, exist_ok=True)
-            target_item.symlink_to(item)
-
 
 def check_in_repo() -> None:
     """Check that we are executing this from repo root."""
@@ -65,7 +27,7 @@ def build() -> None:
     build_path = Path("build")
     build_path.mkdir(exist_ok=True)
 
-    subprocess.run(["cmake", "-B", str(build_path), "-G", "Ninja"], check=True)
+    subprocess.run(["cmake", "-B", str(build_path), "-G", "Ninja", "-DCMAKE_BUILD_TYPE=Release"], check=True)
 
     subprocess.run(["ninja", "-C", str(build_path)])
 
@@ -80,11 +42,6 @@ def build() -> None:
 
     deploy_path.symlink_to(target_path.resolve())
 
-    cpp_script_path = build_path / "cpp_scripts"
-    cpp_executables_path = Path("cpp_executables")
-
-    symlink_executables(cpp_script_path, cpp_executables_path)
-
     subprocess.run(
         ["stubgen", "-p", "foundation", "-o", "./src/project", "--include-docstring"],
         env=dict(os.environ, PYTHONPATH="./src/project"),
@@ -95,7 +52,6 @@ def clean() -> None:
     """Clean the build folder and remove the symlink, if any."""
     check_in_repo()
     shutil.rmtree(BUILD_DIR, ignore_errors=True)
-    shutil.rmtree("cpp_executables", ignore_errors=True)
 
     # Remove the symlink, if any
     deploy_path = Path(f"src/project/{MODULE_NAME}")

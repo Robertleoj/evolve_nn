@@ -1,17 +1,22 @@
 cmake_minimum_required(VERSION 3.22)
 project(project)
-set(CMAKE_CXX_STANDARD 20)
+set(CMAKE_CXX_STANDARD 17)
 
 set(CMAKE_POSITION_INDEPENDENT_CODE ON)
 
-add_subdirectory(external/fmt)
-add_subdirectory(external/spdlog)
 add_subdirectory(external/pybind11)
 
-# Set to ON for profiling.
-# Off by default because this consumes a lot of memory.
-option(TRACY_ENABLE "" OFF)
-add_subdirectory(external/tracy)
+find_package(Python COMPONENTS Interpreter REQUIRED)
+execute_process(
+    COMMAND ${Python_EXECUTABLE} -c "import torch; print(torch.utils.cmake_prefix_path)"
+    OUTPUT_VARIABLE TORCH_CMAKE_PREFIX_PATH
+    OUTPUT_STRIP_TRAILING_WHITESPACE
+)
+
+set(CMAKE_PREFIX_PATH ${CMAKE_PREFIX_PATH} ${TORCH_CMAKE_PREFIX_PATH})
+
+find_package(Torch REQUIRED)
+set(CMAKE_CXX_FLAGS "${CMAKE_CXX_FLAGS} ${TORCH_CXX_FLAGS}")
+
 
 add_subdirectory(src)
-add_subdirectory(cpp_scripts)

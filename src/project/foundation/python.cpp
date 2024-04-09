@@ -1,13 +1,12 @@
 #include "../../../include/foundation/example.hpp"
+#include <torch/torch.h>
 #include <pybind11/pybind11.h>
 #include <pybind11/stl.h>
 
-// NOTE: This sets compile time level. In addition, you need to set the
-// runtime level low enough to show these (e.g. trace for everything)
-#define SPDLOG_ACTIVE_LEVEL SPDLOG_LEVEL_INFO
-
 #include <fstream>
-#include <spdlog/spdlog.h>
+#include <iostream>
+#include <string>
+
 
 namespace py = pybind11;
 
@@ -19,11 +18,14 @@ PYBIND11_MODULE(foundation, m) {
         ---------------------------
     )pbdoc";
 
-  m.def(
-      "set_spdlog_level", [](const std::string &level) { spdlog::set_level(spdlog::level::from_str(level)); },
-      "Set spd log level. Supported levels are: trace, debug, info, warn, error, critical, off.");
-
   m.def("add", add, "Add two numbers", py::arg("a"), py::arg("b"), R"pbdoc(
         Add two numbers
   )pbdoc");
+
+  m.def("tensor_test", []() {
+    torch::Tensor tensor = torch::rand({2, 3});
+    std::cout << tensor << std::endl;
+    std::cout << "Tensor size: " << tensor.sizes() << std::endl;
+  });
+
 }
