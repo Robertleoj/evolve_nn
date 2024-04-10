@@ -101,6 +101,12 @@ class Graph:
             if isinstance(self.id_to_node[node_id], OperatorNode)
         ]
 
+    def parameter_nodes(self) -> list[str]:
+        return [
+            node_id for node_id in self.node_ids 
+            if isinstance(self.id_to_node[node_id], ParameterNode)
+        ]
+
     def output_nodes(self) -> list[str]:
         return [
             node_id for node_id in self.node_ids 

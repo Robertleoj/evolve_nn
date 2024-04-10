@@ -150,6 +150,11 @@ class CompiledGraph(nn.Module):
         data[node_id] = node(input_data)
 
 
+def compile(graph):
+    compiled = CompiledGraph.from_graph(graph)
+    return torch.compile(compiled)
+    
+    
 
 def show_compiled(graph: CompiledGraph) -> None:
     """Show the graph using Graphviz."""

@@ -1,8 +1,9 @@
 """Mutation operators for graphs"""
-from project.graph_novec.graph import Graph
+from project.graph_novec.graph import Graph, show_graph
 from project.graph_novec.nodes import DataNode, OperatorNode, operator_nodes, node_from_name, ParameterNode
 import random
 import networkx as nx
+from dataclasses import dataclass
 from copy import deepcopy
 
 def check_validity(graph: Graph):
@@ -296,5 +297,80 @@ def delete_operator(graph: Graph, tries=30) -> tuple[Graph, bool]:
     
     return graph, False
 
-    
+mutation_functions = {
+    'expand_edge': expand_edge,
+    'add_edge': add_edge,
+    'add_parameter': add_parameter,
+    'delete_operator': delete_operator,
+    'delete_edge': delete_edge,
+    'delete_parameter': delete_parameter
+}
 
+@dataclass
+class GraphMutHP:
+    max_num_mutations: int
+    mutation_probabilities: dict[str, float]
+
+def random_graph_mut_hps():
+    probs = {}
+    for k in mutation_functions.keys():
+        probs[k] = random.uniform(0, 1)
+
+    return GraphMutHP(
+        max_num_mutations=random.randint(1, 10),
+        mutation_probabilities=probs
+    )
+
+def mutate_graph(graph: Graph, mutation_hyperparams: GraphMutHP) -> Graph:
+    mutated = graph
+
+    max_num_mutations = mutation_hyperparams.max_num_mutations
+    names, probs = zip(*list(mutation_hyperparams.mutation_probabilities.items()))
+
+    mutations_performed = 0
+    num_mutations = random.randint(1, max_num_mutations)
+    while mutations_performed < num_mutations:
+        mutation_name = random.choices(names, weights=probs)[0]
+        mutation_function = mutation_functions[mutation_name]
+        mutated, changed = mutation_function(mutated)
+
+        try:
+            check_validity(mutated)
+        except Exception as e:
+            print("Tried to mutate with {} but failed".format(mutation_function))
+            print(e)
+            show_graph(mutated)
+            raise e
+
+        if changed:
+            mutations_performed += 1
+
+    return mutated
+
+def mutate_graph_hps(hp: GraphMutHP):
+    new_hp = deepcopy(hp)
+    new_hp.max_num_mutations = max(hp.max_num_mutations + random.choice([-1, 0, 1]), 1)
+
+    new_probs = {}
+    for k, v in hp.mutation_probabilities.items():
+        new_probs[k] = v * random.uniform(0.8, 1.2)
+
+    new_hp.mutation_probabilities = new_probs
+
+    return new_hp
+    
+def recombine_graph_hps(hp1: GraphMutHP, hp2: GraphMutHP) -> GraphMutHP:
+    new_hp = deepcopy(hp1)
+
+    new_hp.max_num_mutations = random.choice([hp1.max_num_mutations, hp2.max_num_mutations])
+
+    new_probs = {}
+    for k in hp1.mutation_probabilities.keys():
+        new_probs[k] = random.choice([hp1.mutation_probabilities[k], hp2.mutation_probabilities[k]])
+
+    new_hp.mutation_probabilities = new_probs
+
+    return new_hp
+
+def recombine_graphs(graph1: Graph, graph2: Graph, hp: GraphMutHP) -> Graph:
+    return graph1
