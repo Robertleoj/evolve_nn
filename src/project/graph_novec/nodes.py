@@ -114,6 +114,10 @@ operator_nodes = [
     ExpNode,
 ]
 
+operator_node_names = [
+    node.name for node in operator_nodes
+]
+
 node_map = {
     node_type.name: node_type
     for node_type in [

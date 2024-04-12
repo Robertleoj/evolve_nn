@@ -12,4 +12,5 @@ class EvolutionConfig:
     num_epochs_training: int = 400
     num_edges_weight: float = 0.01
     num_parameters_weight: float = 0.01
+    softmax_temp: float = 1.0
 

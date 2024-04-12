@@ -200,4 +200,3 @@ def show_multiple_graphs(graphs: list[Graph]) -> None:
 
     svg = dot.pipe(format="svg").decode("utf-8")
     display(SVG(svg))
-

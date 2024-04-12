@@ -23,6 +23,7 @@ import torch.multiprocessing as mp
 from einops import rearrange
 import random
 from tqdm import tqdm
+import numpy as np
 from timeit import default_timer
 from itertools import repeat, cycle
 import matplotlib.pyplot as plt
@@ -36,12 +37,13 @@ import math
 # %%
 evolution_config = EvolutionConfig(
     mutate_num_mutations=False,
-    max_num_mutations=2,
-    population_size=100,
-    top_k_stay=0,
+    max_num_mutations=5,
+    population_size=1000,
+    top_k_stay=3,
     num_epochs_training=1000,
-    num_edges_weight=0,
-    num_parameters_weight=0
+    num_edges_weight=1e-5,
+    num_parameters_weight=1e-4,
+    softmax_temp = 0.2
 )
 
 # %%
@@ -165,7 +167,7 @@ def evaluate_population(population, evolution_config):
     )
 
     # Make sure args is iterable of iterables (e.g., list of tuples)
-    with mp.Pool(8) as p:
+    with mp.Pool(16) as p:
         out = []
         for result in tqdm(p.imap(train_eval_single_net, args), desc="Evaluating population", total=len(population)):
             out.append(result)
@@ -181,33 +183,63 @@ def evaluate_population(population, evolution_config):
 
 # %%
 
+# def select_and_mutate(population, fitness_scores, evolution_config):
+#     # Zip together the population and fitness scores, then sort them by loss
+#     paired_pop = list(zip(population, fitness_scores))
+#     paired_pop.sort(key=lambda x: x[1], reverse=False)  # Sort by fitness score, low to high
+
+#     # Select the top half, excluding the best one since it's already included
+#     top_half = [individual for individual, score in paired_pop[:(len(paired_pop) // 2)]]
+
+#     # Clone and mutate to fill up the next generation, starting with the best individual
+#     # next_generation = [best_individual]  # Start with the best individual unchanged
+#     next_generation = top_half[:evolution_config.top_k_stay] # Start with the best individual unchanged
+
+#     for individual in cycle(top_half):
+#         too_many = False
+#         for _ in range(2):
+#             if len(next_generation) >= len(population):  # Check to not exceed the original size
+#                 too_many = True
+#                 break
+#             other = random.choice(top_half)
+#             recombined = recombine_individuals(individual, other, evolution_config)
+#             rec_mut = mutate_individual(recombined, evolution_config)
+#             next_generation.append(rec_mut) 
+#         if too_many:
+#             break
+
+#     return next_generation
+
 def select_and_mutate(population, fitness_scores, evolution_config):
-    # Zip together the population and fitness scores, then sort them by loss
-    paired_pop = list(zip(population, fitness_scores))
-    paired_pop.sort(key=lambda x: x[1], reverse=False)  # Sort by fitness score, low to high
+    # Apply softmax to negative fitness scores directly to favor individuals with lower scores
+    # normalize the fitness scores between 0 and 1
+    
 
-    # Select the top half, excluding the best one since it's already included
-    top_half = [individual for individual, score in paired_pop[:(len(paired_pop) // 2)]]
 
-    # Clone and mutate to fill up the next generation, starting with the best individual
-    # next_generation = [best_individual]  # Start with the best individual unchanged
-    next_generation = top_half[:evolution_config.top_k_stay] # Start with the best individual unchanged
+    softmax_temp = evolution_config.softmax_temp
+    exp_scores = np.exp(-np.array(fitness_scores) / softmax_temp)  # Exponentiate the negative fitness scores
+    probabilities = exp_scores / np.sum(exp_scores)  # Softmax probabilities
 
-    for individual in cycle(top_half):
-        too_many = False
-        for _ in range(2):
-            if len(next_generation) >= len(population):  # Check to not exceed the original size
-                too_many = True
-                break
-            other = random.choice(top_half)
-            recombined = recombine_individuals(individual, other, evolution_config)
-            rec_mut = mutate_individual(recombined, evolution_config)
-            next_generation.append(rec_mut) 
-        if too_many:
+    # Use softmax probabilities to perform weighted selection
+    selected_indices = random.choices(range(len(population)), weights=probabilities, k=len(population) // 2)
+    selected_population = [population[i] for i in selected_indices]
+
+    sorted_by_score = sorted(list(zip(population, fitness_scores)), key=lambda x: x[1])
+    next_generation = [individual for individual, score in sorted_by_score[:evolution_config.top_k_stay]]
+
+    # Clone and mutate to fill up the next generation
+    for individual in cycle(selected_population):
+        if len(next_generation) >= len(population):
             break
+        for _ in range(2):  # Assume each selected individual can produce two offspring
+            if len(next_generation) >= len(population):
+                break
+            other = random.choice(selected_population)
+            recombined = recombine_individuals(individual, other, evolution_config)
+            mutated_offspring = mutate_individual(recombined, evolution_config)
+            next_generation.append(mutated_offspring)
 
-    return next_generation
-
+    return next_generation, probabilities
 
 
 # %%
@@ -241,7 +273,12 @@ def evolve(population, iterations, evolution_config):
             ax.scatter(x, y)
         plt.show()
         plt.close(fig)
-        population = select_and_mutate(population, fitness_scores, evolution_config)
+        population, probabilities = select_and_mutate(population, fitness_scores, evolution_config)
+        probabilities: list[float] = probabilities.tolist()
+        probabilities.sort(reverse=True)
+        plt.bar(range(len(probabilities)), probabilities)
+        plt.show()
+        plt.close()
     
     # fitness_scores, compiled = evaluate_population(population, num_edges_weight, num_parameters_weight)
     # scores_and_individuals = zip(fitness_scores, population, compiled)
