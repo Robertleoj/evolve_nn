@@ -1,9 +1,9 @@
-import torch.nn as nn
 import torch
+import torch.nn as nn
 from graphviz import Digraph
-from project.graph_novec.nodes import DataNode, InputNode, Node, OutputNode, ParameterNode, OperatorNode
-from project.graph_novec.graph import topsort_edge_list, reverse_adjacency_list, Graph
 from IPython.display import SVG, display
+from project.graph_novec.graph import Graph, topsort_edge_list
+from project.graph_novec.nodes import DataNode, InputNode, Node, OperatorNode, OutputNode, ParameterNode
 
 
 class CompiledGraph(nn.Module):
@@ -23,11 +23,7 @@ class CompiledGraph(nn.Module):
     output_nodes: list[int]
     rev_adjacency_list: list[list[int]]
 
-    def __init__(
-        self,
-        nodes: list[Node],
-        edge_list: list[tuple[int, int]]
-    ) -> None:
+    def __init__(self, nodes: list[Node], edge_list: list[tuple[int, int]]) -> None:
         """Create a compiled graph.
 
         Args:
@@ -40,9 +36,7 @@ class CompiledGraph(nn.Module):
         """
         super().__init__()
         topsorted = topsort_edge_list(len(nodes), edge_list)
-        topsorted_idx = {
-            node_id: i for i, node_id in enumerate(topsorted)
-        }
+        topsorted_idx = {node_id: i for i, node_id in enumerate(topsorted)}
 
         nodes = [nodes[i] for i in topsorted]
         edge_list = [(topsorted_idx[edge[0]], topsorted_idx[edge[1]]) for edge in edge_list]
@@ -85,16 +79,9 @@ class CompiledGraph(nn.Module):
         Returns:
             CompiledGraph: The compiled graph.
         """
-        node_id_to_node_idx = {
-            node_id: i for i, node_id in enumerate(graph.node_ids)
-        }
+        node_id_to_node_idx = {node_id: i for i, node_id in enumerate(graph.node_ids)}
 
-        edge_list = [
-            (
-                node_id_to_node_idx[edge[0]], 
-                node_id_to_node_idx[edge[1]]
-            ) for edge in graph.edge_list
-        ]
+        edge_list = [(node_id_to_node_idx[edge[0]], node_id_to_node_idx[edge[1]]) for edge in graph.edge_list]
 
         return cls(graph.nodes, edge_list)
 
@@ -153,8 +140,7 @@ class CompiledGraph(nn.Module):
 def compile(graph):
     compiled = CompiledGraph.from_graph(graph)
     return torch.compile(compiled)
-    
-    
+
 
 def show_compiled(graph: CompiledGraph) -> None:
     """Show the graph using Graphviz."""
@@ -169,14 +155,10 @@ def show_compiled(graph: CompiledGraph) -> None:
 
     for to_idx, from_indices in enumerate(graph.rev_adjacency_list):
         for from_idx in from_indices:
-            edge = (from_idx, to_idx)
             dot.edge(
-                str(from_idx), 
-                str(to_idx), 
+                str(from_idx),
+                str(to_idx),
             )
 
     svg = dot.pipe(format="svg").decode("utf-8")
     display(SVG(svg))
-
-
-

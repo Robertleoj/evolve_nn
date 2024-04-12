@@ -17,55 +17,30 @@
 # %%
 # %load_ext autoreload
 # %autoreload 2
-from project.graph.graph import Graph, make_graph, show_graph, CompiledGraph
 import torch
+from project.graph.graph import CompiledGraph, make_graph, show_graph
 
 # %%
 graph_spec = {
     "subgraph_specs": [
         {
-            "node_specs": [
-                {"name": "input"},
-                {"name": "input"},
-                {"name": "add"},
-                {"name": "output"}
-            ],
-            "rev_adj_list": [
-                [], [], [0, 1], [2]
-            ],
-            "input_node_order": [0, 1]
+            "node_specs": [{"name": "input"}, {"name": "input"}, {"name": "add"}, {"name": "output"}],
+            "rev_adj_list": [[], [], [0, 1], [2]],
+            "input_node_order": [0, 1],
         }
     ],
     "node_specs": [
-        {
-            "name": "input"
-        },
-        {
-            "name": "input"
-        },
-        {
-            "name": "graph",
-            "subgraph_idx": 0
-        },
-        {
-            "name": "graph",
-            "subgraph_idx": 0
-        },
-        {
-            "name": "output"
-        }
+        {"name": "input"},
+        {"name": "input"},
+        {"name": "graph", "subgraph_idx": 0},
+        {"name": "graph", "subgraph_idx": 0},
+        {"name": "output"},
     ],
-    "rev_adj_list":  [
-        [],
-        [],
-        [0, 1],
-        [2, 2],
-        [3]
-    ],
+    "rev_adj_list": [[], [], [0, 1], [2, 2], [3]],
     "input_node_order": [0, 1],
-    "output_node_order": [4]
+    "output_node_order": [4],
 }
-    
+
 
 # %%
 g = make_graph(**graph_spec)

@@ -10,22 +10,23 @@ TODO: check that:
 * Operator nodes only point to Data nodes
 * Data nodes only point to Operator nodes
 """
-import torch
-from contextlib import nullcontext
 import math
-from typing import Any
-from dataclasses import dataclass
 from collections import defaultdict
-from copy import deepcopy
-import torch.nn as nn
+from dataclasses import dataclass
+from typing import Any
 from uuid import uuid4
+
+import networkx as nx
+import torch
+import torch.nn as nn
 from graphviz import Digraph
 from IPython.display import SVG, display
 from project.utils.graph_utils import topsort_edge_list
-import networkx as nx
+
 
 class Node:
     """Base class for all nodes in the graph."""
+
     name: str
 
 
@@ -33,17 +34,23 @@ class Node:
 class DataNode(Node):
     """A node that represents data."""
 
+
 class InputNode(DataNode):
     """A node that represents input data."""
+
     name = "input"
+
 
 class OutputNode(DataNode):
     """A node that represents output data."""
+
     name = "output"
+
 
 class ParameterNode(DataNode):
     """A node that represents a learnable parameter."""
-    name= "parameter"
+
+    name = "parameter"
 
 
 # operator nodes
@@ -62,25 +69,32 @@ class OperatorNode(Node):
         """Perform the operation."""
         raise NotImplementedError
 
+
 class AddMod(nn.Module):
     def forward(self, inp: list[torch.Tensor]) -> torch.Tensor:
-        return sum(inp) # type: ignore
+        return sum(inp)  # type: ignore
+
+
 class AddNode(OperatorNode):
     """A node that adds two or more tensors."""
-    name="add"
+
+    name = "add"
     n_inputs = (1, None)
 
     def get_op(self) -> nn.Module:
         """Perform the addition operation."""
         return AddMod()
-        
+
 
 class ProdMod(nn.Module):
     def forward(self, inp: list[torch.Tensor]) -> torch.Tensor:
-        return math.prod(inp) # type: ignore
+        return math.prod(inp)  # type: ignore
+
+
 class ProdNode(OperatorNode):
     """A node that multiplies two or more tensors."""
-    name="prod"
+
+    name = "prod"
     n_inputs = (1, None)
 
     def get_op(self) -> nn.Module:
@@ -91,22 +105,28 @@ class ProdNode(OperatorNode):
 class GELUMod(nn.Module):
     def forward(self, inp: list[torch.Tensor]) -> torch.Tensor:
         return nn.functional.gelu(inp[0])
+
+
 class GELUNode(OperatorNode):
     """A node that applies the ReLu function."""
-    name="GELU"
+
+    name = "GELU"
     n_inputs = (1, 1)
 
     def get_op(self) -> nn.Module:
         """Perform the ReLu operation."""
         return GELUMod()
 
+
 class LogMod(nn.Module):
     def forward(self, inp: list[torch.Tensor]) -> torch.Tensor:
         return torch.log(inp[0])
 
+
 class LogNode(OperatorNode):
     """A node that applies the log function."""
-    name="log"
+
+    name = "log"
 
     n_inputs = (1, 1)
 
@@ -114,9 +134,12 @@ class LogNode(OperatorNode):
         """Perform the log operation."""
         return LogMod()
 
+
 class ExpMod(nn.Module):
     def forward(self, inp: list[torch.Tensor]) -> torch.Tensor:
         return torch.exp(inp[0])
+
+
 class ExpNode(OperatorNode):
     """A node that applies the exp function."""
 
@@ -126,7 +149,6 @@ class ExpNode(OperatorNode):
     def forward(self, inputs: list[torch.Tensor]) -> torch.Tensor:
         """Perform the exp operation."""
         return torch.exp(inputs[0])
-
 
 
 @dataclass
@@ -152,34 +174,19 @@ class Graph:
         return node_id
 
     def input_nodes(self) -> list[str]:
-        return [
-            node_id for node_id, node in self.id_to_node.items()
-            if isinstance(self.id_to_node[node_id], InputNode)
-        ]
+        return [node_id for node_id, node in self.id_to_node.items() if isinstance(self.id_to_node[node_id], InputNode)]
 
     def operator_nodes(self) -> list[str]:
-        return [
-            node_id for node_id, node in self.id_to_node.items()
-            if isinstance(node, OperatorNode)
-        ]
+        return [node_id for node_id, node in self.id_to_node.items() if isinstance(node, OperatorNode)]
 
     def parameter_nodes(self) -> list[str]:
-        return [
-            node_id for node_id, node in self.id_to_node.items()
-            if isinstance(node, ParameterNode)
-        ]
+        return [node_id for node_id, node in self.id_to_node.items() if isinstance(node, ParameterNode)]
 
     def output_nodes(self) -> list[str]:
-        return [
-            node_id for node_id, node in self.id_to_node.items()
-            if isinstance(node, OutputNode)
-        ]
+        return [node_id for node_id, node in self.id_to_node.items() if isinstance(node, OutputNode)]
 
     def data_nodes(self) -> list[str]:
-        return [
-            node_id for node_id, node in self.id_to_node.items()
-            if isinstance(node, DataNode)
-        ]
+        return [node_id for node_id, node in self.id_to_node.items() if isinstance(node, DataNode)]
 
     def get_nx(self) -> nx.DiGraph:
         graph = nx.DiGraph()
@@ -188,6 +195,7 @@ class Graph:
             for neighbor in neighbors:
                 graph.add_edge(neighbor, node_id)
         return graph
+
 
 class SubGraphNode(OperatorNode):
     """A node that represents a subgraph."""
@@ -209,9 +217,8 @@ def make_graph(
     rev_adj_list: list[tuple[int, int]],
     input_node_order: list[int],
     subgraph_specs: list[dict[str, Any]] | None = None,
-    output_node_order: list[int] | None = None
+    output_node_order: list[int] | None = None,
 ) -> Graph:
-
     subgraphs = []
     if subgraph_specs is not None:
         for spec in subgraph_specs:
@@ -219,8 +226,8 @@ def make_graph(
 
     nodes = []
     for spec in node_specs:
-        if spec['name'] == 'graph':
-            subgraph_idx = spec['subgraph_idx']
+        if spec["name"] == "graph":
+            subgraph_idx = spec["subgraph_idx"]
             node = SubGraphNode(subgraph=subgraphs[subgraph_idx])
             nodes.append(node)
         else:
@@ -251,7 +258,7 @@ def make_graph(
         rev_adj_list=id_rev_adj_list,
         ordered_input_nodes=input_node_id_order,
         ordered_output_nodes=output_node_id_order,
-        subgraphs=subgraphs
+        subgraphs=subgraphs,
     )
 
 
@@ -273,7 +280,6 @@ class CompiledGraph(nn.Module):
     output_nodes: list[int]
     stored_modules: nn.ModuleDict
     stored_parameters: nn.ParameterDict
-    
 
     def __init__(
         self,
@@ -298,9 +304,7 @@ class CompiledGraph(nn.Module):
 
         topsorted = topsort_edge_list(len(nodes), edge_list)
 
-        topsorted_idx = {
-            node_id: i for i, node_id in enumerate(topsorted)
-        }
+        topsorted_idx = {node_id: i for i, node_id in enumerate(topsorted)}
 
         sorted_nodes = [nodes[i] for i in topsorted]
         self.nodes = sorted_nodes
@@ -313,7 +317,7 @@ class CompiledGraph(nn.Module):
                 sorted_from_idx = topsorted_idx[from_idx]
                 sorted_back_list.append(sorted_from_idx)
             sorted_rev_adj_list[sorted_to_idx] = sorted_back_list
-        
+
         self.rev_adjacency_list = sorted_rev_adj_list
 
         self.stored_modules = nn.ModuleDict()
@@ -346,7 +350,6 @@ class CompiledGraph(nn.Module):
         Returns:
             CompiledGraph: The compiled graph.
         """
-
         node_id_to_node_idx = {}
         nodes = []
 
@@ -433,10 +436,9 @@ def show_compiled(graph: CompiledGraph) -> None:
 
     for to_idx, from_indices in enumerate(graph.rev_adjacency_list):
         for from_idx in from_indices:
-            edge = (from_idx, to_idx)
             dot.edge(
-                str(from_idx), 
-                str(to_idx), 
+                str(from_idx),
+                str(to_idx),
             )
 
     svg = dot.pipe(format="svg").decode("utf-8")
@@ -444,27 +446,22 @@ def show_compiled(graph: CompiledGraph) -> None:
 
 
 class SubCompiledGraph(CompiledGraph):
-
-    def forward(self, inputs: list[torch.Tensor]) -> torch.Tensor: # type: ignore
+    def forward(self, inputs: list[torch.Tensor]) -> torch.Tensor:  # type: ignore
         outputs = super().forward(inputs)
         return outputs[0]
 
 
 def make_recursive_graph(graph: Graph, dot: Digraph | None = None) -> Digraph:
-
     if dot is None:
         dot = Digraph()
 
     for node_id, node in graph.id_to_node.items():
-
         label = node.name
 
         if isinstance(node, DataNode):
             if isinstance(node, InputNode):
                 input_idx = next(
-                    i for i, iter_node_id in enumerate(
-                        graph.ordered_input_nodes
-                    ) if node_id == iter_node_id
+                    i for i, iter_node_id in enumerate(graph.ordered_input_nodes) if node_id == iter_node_id
                 )
 
                 label = f"{node.name} {input_idx}"
@@ -486,9 +483,7 @@ def make_recursive_graph(graph: Graph, dot: Digraph | None = None) -> Digraph:
         for i, neighbor_id in enumerate(backward_neighbors):
             dot.edge(neighbor_id, node_id, label=str(i))
 
-
     for i, subgraph in enumerate(graph.subgraphs):
-
         with dot.subgraph(name="cluster_" + str(uuid4())) as sg:
             make_recursive_graph(subgraph, dot=sg)
             label = f"Graph {i}"
@@ -496,20 +491,22 @@ def make_recursive_graph(graph: Graph, dot: Digraph | None = None) -> Digraph:
 
     return dot
 
+
 def show_graph(graph: Graph) -> None:
     """Show the graph using Graphviz."""
     dot = make_recursive_graph(graph)
     svg = dot.pipe(format="svg").decode("utf-8")
     display(SVG(svg))
 
+
 def show_multiple_graphs(graphs: list[Graph]) -> None:
     """Show multiple graphs in a single figure, each graph labeled by its index."""
     dot = Digraph()
-    dot.attr(compound='true')
+    dot.attr(compound="true")
 
     for index, graph in enumerate(graphs):
-        with dot.subgraph(name=f'cluster_{index}') as c:
-            c.attr(label=f'Graph {index}')
+        with dot.subgraph(name=f"cluster_{index}") as c:
+            c.attr(label=f"Graph {index}")
             for node_id, node in graph.id_to_node.items():
                 label = node.name
                 name = f"{node_id}_{index}"
@@ -528,13 +525,7 @@ def show_multiple_graphs(graphs: list[Graph]) -> None:
     display(SVG(svg))
 
 
-op_nodes = [
-    AddNode,
-    ProdNode,
-    GELUNode,
-    ExpNode,
-    SubGraphNode
-]
+op_nodes = [AddNode, ProdNode, GELUNode, ExpNode, SubGraphNode]
 
 data_nodes = [
     InputNode,
@@ -542,21 +533,15 @@ data_nodes = [
     ParameterNode,
 ]
 
-op_node_name_to_node = {
-    node.name: node
-    for node in op_nodes
-}
+op_node_name_to_node = {node.name: node for node in op_nodes}
 
-data_node_name_to_node = {
-    node.name: node
-    for node in data_nodes
-
-}
+data_node_name_to_node = {node.name: node for node in data_nodes}
 
 node_name_to_node = {
     **op_node_name_to_node,
     **data_node_name_to_node,
 }
+
 
 def node_from_spec(spec: dict[str, Any]) -> Node:
     """Create a node from a dictionary representation.
@@ -567,10 +552,8 @@ def node_from_spec(spec: dict[str, Any]) -> Node:
     Returns:
         Node: The node.
     """
-
-    node_name = spec['name']
-    node=  node_name_to_node[node_name]
-    if 'args' in spec:
-        return node(**spec['args'])
+    node_name = spec["name"]
+    node = node_name_to_node[node_name]
+    if "args" in spec:
+        return node(**spec["args"])
     return node()
-

@@ -10,15 +10,14 @@ TODO: check that:
 * Operator nodes only point to Data nodes
 * Data nodes only point to Operator nodes
 """
-import torch
 from dataclasses import dataclass
-from copy import deepcopy
-import torch.nn as nn
 from uuid import uuid4
+
+import networkx as nx
 from graphviz import Digraph
 from IPython.display import SVG, display
 from project.graph_novec.nodes import DataNode, InputNode, Node, OperatorNode, OutputNode, ParameterNode, node_from_name
-import networkx as nx
+
 
 def topsort_adj_list(adj_list: list[list[int]]) -> list[int]:
     """Topologically sort a graph given its adjacency list.
@@ -30,6 +29,7 @@ def topsort_adj_list(adj_list: list[list[int]]) -> list[int]:
         List of node indices in topological order.
     """
     return list(nx.topological_sort(nx.DiGraph(adj_list)))
+
 
 def topsort_edge_list(num_nodes: int, edge_list: list[tuple[int, int]]) -> list[int]:
     """Topologically sort a graph given its edge list.
@@ -90,34 +90,19 @@ class Graph:
         return node_id
 
     def input_nodes(self) -> list[str]:
-        return [
-            node_id for node_id in self.node_ids 
-            if isinstance(self.id_to_node[node_id], InputNode)
-        ]
+        return [node_id for node_id in self.node_ids if isinstance(self.id_to_node[node_id], InputNode)]
 
     def operator_nodes(self) -> list[str]:
-        return [
-            node_id for node_id in self.node_ids 
-            if isinstance(self.id_to_node[node_id], OperatorNode)
-        ]
+        return [node_id for node_id in self.node_ids if isinstance(self.id_to_node[node_id], OperatorNode)]
 
     def parameter_nodes(self) -> list[str]:
-        return [
-            node_id for node_id in self.node_ids 
-            if isinstance(self.id_to_node[node_id], ParameterNode)
-        ]
+        return [node_id for node_id in self.node_ids if isinstance(self.id_to_node[node_id], ParameterNode)]
 
     def output_nodes(self) -> list[str]:
-        return [
-            node_id for node_id in self.node_ids 
-            if isinstance(self.id_to_node[node_id], OutputNode)
-        ]
+        return [node_id for node_id in self.node_ids if isinstance(self.id_to_node[node_id], OutputNode)]
 
     def data_nodes(self) -> list[str]:
-        return [
-            node_id for node_id in self.node_ids 
-            if isinstance(self.id_to_node[node_id], DataNode)
-        ]
+        return [node_id for node_id in self.node_ids if isinstance(self.id_to_node[node_id], DataNode)]
 
     def remove_node(self, node_id) -> None:
         node_idx = self.node_ids.index(node_id)
@@ -127,7 +112,7 @@ class Graph:
 
     def adjacency_list(self, reverse: bool = False) -> dict[str, list[str]]:
         adj_list = {node_id: [] for node_id in self.node_ids}
-        for (a, b) in self.edge_list:
+        for a, b in self.edge_list:
             if reverse:
                 b, a = a, b
             adj_list[a].append(b)
@@ -150,12 +135,11 @@ def make_graph(
 ) -> Graph:
     nodes = [node_from_name(name) for name in node_names]
     node_ids = [str(uuid4()) for _ in nodes]
-    edge_list_uuid = [
-        (node_ids[edge[0]], node_ids[edge[1]]) for edge in edge_list
-    ]
+    edge_list_uuid = [(node_ids[edge[0]], node_ids[edge[1]]) for edge in edge_list]
     id_to_node = dict(zip(node_ids, nodes))
 
     return Graph(nodes, node_ids, id_to_node, edge_list_uuid)
+
 
 def show_graph(graph: Graph) -> None:
     """Show the graph using Graphviz."""
@@ -170,21 +154,22 @@ def show_graph(graph: Graph) -> None:
 
     for edge in graph.edge_list:
         dot.edge(
-            str(edge[0]), 
-            str(edge[1]), 
+            str(edge[0]),
+            str(edge[1]),
         )
 
     svg = dot.pipe(format="svg").decode("utf-8")
     display(SVG(svg))
 
+
 def show_multiple_graphs(graphs: list[Graph]) -> None:
     """Show multiple graphs in a single figure, each graph labeled by its index."""
     dot = Digraph()
-    dot.attr(compound='true')
+    dot.attr(compound="true")
 
     for index, graph in enumerate(graphs):
-        with dot.subgraph(name=f'cluster_{index}') as c:
-            c.attr(label=f'Graph {index}')
+        with dot.subgraph(name=f"cluster_{index}") as c:
+            c.attr(label=f"Graph {index}")
             for node_id, node in zip(graph.node_ids, graph.nodes):
                 label = node.name
                 name = f"{node_id}_{index}"

@@ -1,6 +1,8 @@
+import math
+
 import torch
 import torch.nn as nn
-import math
+
 
 class Node(nn.Module):
     """Base class for all nodes in the graph.
@@ -20,18 +22,22 @@ class Node(nn.Module):
 class DataNode(Node):
     """A node that represents data."""
 
+
 class InputNode(DataNode):
     """A node that represents input data."""
+
     name = "input"
 
 
 class ParameterNode(DataNode):
     """A node that represents a learnable parameter."""
+
     name = "parameter"
 
 
 class OutputNode(DataNode):
     """A node that represents output data."""
+
     name = "output"
 
 
@@ -53,6 +59,7 @@ class OperatorNode(Node):
             inputs: List of input tensors.
         """
         raise NotImplementedError
+
 
 class AddNode(OperatorNode):
     """A node that adds two or more tensors."""
@@ -86,6 +93,7 @@ class GELUNode(OperatorNode):
         """Perform the ReLu operation."""
         return nn.functional.gelu(inputs[0])
 
+
 class LogNode(OperatorNode):
     """A node that applies the log function."""
 
@@ -95,6 +103,7 @@ class LogNode(OperatorNode):
     def forward(self, inputs: list[torch.Tensor]) -> torch.Tensor:
         """Perform the log operation."""
         return torch.log(inputs[0])
+
 
 class ExpNode(OperatorNode):
     """A node that applies the exp function."""
@@ -114,16 +123,11 @@ operator_nodes = [
     ExpNode,
 ]
 
-operator_node_names = [
-    node.name for node in operator_nodes
-]
+operator_node_names = [node.name for node in operator_nodes]
 
 node_map = {
     node_type.name: node_type
-    for node_type in [
-        InputNode, 
-        OutputNode, 
-        ParameterNode, AddNode, ProdNode, GELUNode, ExpNode]
+    for node_type in [InputNode, OutputNode, ParameterNode, AddNode, ProdNode, GELUNode, ExpNode]
 }
 
 

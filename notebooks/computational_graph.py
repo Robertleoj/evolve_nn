@@ -40,16 +40,8 @@ sample_graph_spec = {
         {"name": "relu", "input_shapes": [(1, 2)], "shape": (1, 2)},
         {"name": "output", "shape": (1, 2)},
     ],
-    "edge_list": [
-        (0, 2), 
-        (1, 2), 
-        (2, 3),
-        (3, 4)
-    ],
-    "index_map": {
-        (0, 2): 0,
-        (1, 2): 1
-    }
+    "edge_list": [(0, 2), (1, 2), (2, 3), (3, 4)],
+    "index_map": {(0, 2): 0, (1, 2): 1},
 }
 
 

@@ -2,7 +2,6 @@
 from dataclasses import dataclass
 
 
-
 @dataclass
 class EvolutionConfig:
     mutate_num_mutations: bool = True
@@ -13,4 +12,3 @@ class EvolutionConfig:
     num_edges_weight: float = 0.01
     num_parameters_weight: float = 0.01
     softmax_temp: float = 1.0
-

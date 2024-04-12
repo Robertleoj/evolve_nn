@@ -6,7 +6,6 @@
 #include <iostream>
 #include <string>
 
-
 namespace py = pybind11;
 
 using namespace foundation;

@@ -17,22 +17,22 @@
 # %%
 # %load_ext autoreload
 # %autoreload 2
+import math
+import random
+from itertools import cycle, repeat
+from timeit import default_timer
+
+import matplotlib.pyplot as plt
+import numpy as np
 import torch
-import torch.nn as nn
 import torch.multiprocessing as mp
 from einops import rearrange
-import random
-from tqdm import tqdm
-import numpy as np
-from timeit import default_timer
-from itertools import repeat, cycle
-import matplotlib.pyplot as plt
-from project.graph_novec.individual import Individual, mutate_individual, recombine_individuals, random_individual
-from project.graph_novec.graph import Graph, show_graph, show_multiple_graphs
 from project.graph_novec.compiled import CompiledGraph, show_compiled
-from project.type_defs import EvolutionConfig
 from project.graph_novec.evolution import initialize_population
-import math
+from project.graph_novec.graph import show_graph, show_multiple_graphs
+from project.graph_novec.individual import mutate_individual, recombine_individuals
+from project.type_defs import EvolutionConfig
+from tqdm import tqdm
 
 # %%
 evolution_config = EvolutionConfig(
@@ -43,26 +43,23 @@ evolution_config = EvolutionConfig(
     num_epochs_training=1000,
     num_edges_weight=1e-5,
     num_parameters_weight=1e-4,
-    softmax_temp = 0.2
+    softmax_temp=0.2,
 )
 
 # %%
 init_spec = {
     "node_names": [
-        'input',
-        'output',           
+        "input",
+        "output",
     ],
-    "edge_list": [
-        (0, 1)
-    ]
+    "edge_list": [(0, 1)],
 }
-
 
 
 # %%
 # define the problem: Sine wave
 x = torch.linspace(0, 1, 100)
-y_clean = torch.sin(x * torch.pi * 2 )
+y_clean = torch.sin(x * torch.pi * 2)
 # y_clean = torch.sin(x ** 2)
 # y_clean =  (x - 0.2) * (x - 0.8) * (x - 1.4)
 y = y_clean + 0.05 * torch.randn(x.size())
@@ -72,14 +69,7 @@ plt.plot(x, y_clean, color="red")
 
 
 # %%
-def evaluate_net(
-    graph_net,
-    compiled_net, 
-    x, 
-    y, 
-    evolution_config
-):
-
+def evaluate_net(graph_net, compiled_net, x, y, evolution_config):
     compiled_net.eval()
     with torch.no_grad():
         output = compiled_net([x])
@@ -91,14 +81,13 @@ def evaluate_net(
     edge_weight = evolution_config.num_edges_weight
     num_parameters_weight = evolution_config.num_parameters_weight
 
-    return (
-        loss.cpu().item() 
-        + edge_weight * num_edges 
-        + num_parameters_weight * num_parameters
-    ), [o.cpu().numpy() for o in output]
+    return (loss.cpu().item() + edge_weight * num_edges + num_parameters_weight * num_parameters), [
+        o.cpu().numpy() for o in output
+    ]
 
 
 # %%
+
 
 def train_eval_single_net(args) -> float:
     torch.set_num_threads(1)
@@ -111,7 +100,6 @@ def train_eval_single_net(args) -> float:
     y = torch.tensor(y)
 
     learning_rate = individual.training_hp.lr
-    momentum = individual.training_hp.momentum
 
     # net = compiled.compile(graph_net)
     if len(list(compiled.parameters())) > 0:
@@ -122,7 +110,7 @@ def train_eval_single_net(args) -> float:
             x_in = rearrange(x, "b -> b")
             targ = rearrange(y, "b -> b")
 
-            start_time = default_timer()
+            default_timer()
             for i in range(evolution_config.num_epochs_training):
                 optimizer.zero_grad()
                 output = compiled([x_in])[0]
@@ -132,39 +120,34 @@ def train_eval_single_net(args) -> float:
                 loss.backward()
                 optimizer.step()
 
-            end_time = default_timer()
+            default_timer()
             # print("Time taken to train net: {}".format(end_time - start_time))
-        
+
         except Exception as e:
             print("Failed to train net")
             print(e)
             show_compiled(compiled)
             raise e
 
-    start_time = default_timer()
+    default_timer()
     eval_out = evaluate_net(graph, compiled, x, y, evolution_config)
-    end_time = default_timer()
+    default_timer()
     # print("Time taken to evaluate net: {}".format(end_time - start_time))
     return eval_out
- 
 
 
 # %%
 
+
 def replace_invalid_with_high(values, high_value=100):
     return [high_value if math.isinf(x) or math.isnan(x) else x for x in values]
 
-def evaluate_population(population, evolution_config):
 
+def evaluate_population(population, evolution_config):
     x_np = x.numpy()
     y_np = y.numpy()
 
-    args = zip(
-        population,
-        repeat(x_np),
-        repeat(y_np),
-        repeat(evolution_config)
-    )
+    args = zip(population, repeat(x_np), repeat(y_np), repeat(evolution_config))
 
     # Make sure args is iterable of iterables (e.g., list of tuples)
     with mp.Pool(16) as p:
@@ -178,7 +161,6 @@ def evaluate_population(population, evolution_config):
     fitness_scores = replace_invalid_with_high(fitness_scores)
 
     return fitness_scores, y_hats
-
 
 
 # %%
@@ -204,17 +186,16 @@ def evaluate_population(population, evolution_config):
 #             other = random.choice(top_half)
 #             recombined = recombine_individuals(individual, other, evolution_config)
 #             rec_mut = mutate_individual(recombined, evolution_config)
-#             next_generation.append(rec_mut) 
+#             next_generation.append(rec_mut)
 #         if too_many:
 #             break
 
 #     return next_generation
 
+
 def select_and_mutate(population, fitness_scores, evolution_config):
     # Apply softmax to negative fitness scores directly to favor individuals with lower scores
     # normalize the fitness scores between 0 and 1
-    
-
 
     softmax_temp = evolution_config.softmax_temp
     exp_scores = np.exp(-np.array(fitness_scores) / softmax_temp)  # Exponentiate the negative fitness scores
@@ -225,7 +206,7 @@ def select_and_mutate(population, fitness_scores, evolution_config):
     selected_population = [population[i] for i in selected_indices]
 
     sorted_by_score = sorted(list(zip(population, fitness_scores)), key=lambda x: x[1])
-    next_generation = [individual for individual, score in sorted_by_score[:evolution_config.top_k_stay]]
+    next_generation = [individual for individual, score in sorted_by_score[: evolution_config.top_k_stay]]
 
     # Clone and mutate to fill up the next generation
     for individual in cycle(selected_population):
@@ -253,7 +234,7 @@ def evolve(population, iterations, evolution_config):
         print(f"Generation {i}, best score: {best_score}")
 
         best_score_idx = fitness_scores.index(best_score)
-        best_y_hat = y_hats[best_score_idx]
+        y_hats[best_score_idx]
 
         best_individual = population[best_score_idx]
         print(best_individual.training_hp)
@@ -264,7 +245,6 @@ def evolve(population, iterations, evolution_config):
         graphs = [ind.graph for _, ind, _ in ordered]
         show_multiple_graphs(graphs[:num_to_show])
 
-        
         num_plots_to_show = 3
         y_hats_to_show = [y_hat[0] for _, _, y_hat in ordered]
         fig, axes = plt.subplots(1, num_plots_to_show, figsize=(10 * num_plots_to_show, 10))
@@ -279,11 +259,12 @@ def evolve(population, iterations, evolution_config):
         plt.bar(range(len(probabilities)), probabilities)
         plt.show()
         plt.close()
-    
+
     # fitness_scores, compiled = evaluate_population(population, num_edges_weight, num_parameters_weight)
     # scores_and_individuals = zip(fitness_scores, population, compiled)
     # scores_and_individuals = sorted(scores_and_individuals, key=lambda x: x[0], reverse=False)
     # return scores_and_individuals
+
 
 # %%
 population = initialize_population(init_spec, evolution_config)
@@ -312,4 +293,3 @@ with torch.no_grad():
 
 plt.plot(x, y_hat, color="green")
 plt.scatter(x, y)
-

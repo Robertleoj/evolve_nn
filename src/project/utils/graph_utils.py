@@ -12,6 +12,7 @@ def topsort_adj_list(adj_list: list[list[int]]) -> list[int]:
     """
     return list(nx.topological_sort(nx.DiGraph(adj_list)))
 
+
 def topsort_edge_list(num_nodes: int, edge_list: list[tuple[int, int]]) -> list[int]:
     """Topologically sort a graph given its edge list.
 
@@ -43,4 +44,3 @@ def reverse_adjacency_list(adj_list: list[list[int]]) -> list[list[int]]:
         for j in neighbors:
             rev_adj_list[j].append(i)
     return rev_adj_list
-

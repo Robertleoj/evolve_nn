@@ -17,15 +17,13 @@
 # %%
 # %load_ext autoreload
 # %autoreload 2
-import torch
-
-import torch
-import torch.nn as nn
-from einops import rearrange
 import random
-from tqdm import tqdm
+
 import matplotlib.pyplot as plt
-from project.graph_novec import graph, graph_mutation, nodes, compiled
+import torch
+from einops import rearrange
+from project.graph_novec import compiled, graph, graph_mutation
+from tqdm import tqdm
 
 # %%
 graph_spec = {
@@ -37,13 +35,7 @@ graph_spec = {
         "add",
         "output",
     ],
-    "edge_list": [
-        (0, 2), 
-        (1, 2), 
-        (2, 4),
-        (3, 4), 
-        (4, 5)
-    ],
+    "edge_list": [(0, 2), (1, 2), (2, 4), (3, 4), (4, 5)],
 }
 
 # %%
@@ -70,7 +62,6 @@ y = y_clean + 0.1 * torch.randn(x.size())
 
 plt.scatter(x, y)
 plt.plot(x, y_clean, color="red")
-
 
 
 # %%
@@ -105,7 +96,6 @@ y_hat
 # %%
 plt.plot(x, y_hat, color="green")
 plt.scatter(x, y)
-
 
 
 # %%

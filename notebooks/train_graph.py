@@ -26,7 +26,6 @@
 import matplotlib.pyplot as plt
 import torch
 from einops import rearrange
-from IPython.display import display
 from project.graph import graph
 from tqdm import tqdm
 
@@ -58,19 +57,13 @@ graph_spec = {
         {"name": "add", "input_shapes": [(x_dim, 1), (x_dim, 1)], "shape": (x_dim, 1)},
         {"name": "output", "shape": (x_dim, 1)},
     ],
-    "edge_list": [
-        (0, 2), 
-        (1, 2), 
-        (2, 4),
-        (3, 4), 
-        (4, 5)
-    ],
+    "edge_list": [(0, 2), (1, 2), (2, 4), (3, 4), (4, 5)],
     "index_map": {
         (0, 2): 1,
         (1, 2): 0,
         (2, 4): 1,
         (3, 4): 0,
-    }
+    },
 }
 
 # %%
