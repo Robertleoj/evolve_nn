@@ -1,9 +1,19 @@
 """Mutation operators for graphs"""
-from project.graph_novec.graph import Graph
-from project.graph_novec.nodes import DataNode, OperatorNode, operator_nodes, node_from_name, ParameterNode
+from project.graph_novec.graph import Graph, show_graph
+from project.graph_novec.nodes import DataNode, OperatorNode, operator_nodes, node_from_name, ParameterNode, operator_node_names
+from project.type_defs import EvolutionConfig
+from typing import Callable
 import random
 import networkx as nx
+from dataclasses import dataclass
 from copy import deepcopy
+
+@dataclass
+class GraphMutHP:
+    max_num_mutations: int
+    mutation_probabilities: dict[str, float]
+    operator_probabilities: dict[str, float]
+
 
 def check_validity(graph: Graph):
     # 1: the graph must be weakly connected
@@ -42,13 +52,25 @@ def check_validity(graph: Graph):
     
     
 
-def available_opnodes(graph: Graph) -> list[str]:
+def available_opnodes(graph: Graph, no_single_params: bool = False) -> list[str]:
     opnodes = graph.operator_nodes()
     adj_list = graph.adjacency_list(reverse=True)
+    forward_adj_list = graph.adjacency_list()
     
     available_nodes = []
 
     for node_id in opnodes:
+        inputs = adj_list[node_id]
+        if no_single_params:
+            found_single_param = False
+            for i in inputs:
+                if isinstance(graph.id_to_node[i], ParameterNode):
+                    if len(set(forward_adj_list[i])) == 1:
+                        found_single_param = True
+                        break
+            if found_single_param:
+                continue
+
         lower_bound, upper_bound = graph.id_to_node[node_id].n_inputs
 
         if upper_bound is None:
@@ -63,7 +85,7 @@ def available_opnodes(graph: Graph) -> list[str]:
 
     return available_nodes
 
-def expand_edge(graph: Graph) -> tuple[Graph, bool]:
+def expand_edge(graph: Graph, mutation_hps) -> tuple[Graph, bool]:
 
     graph = deepcopy(graph)
 
@@ -76,11 +98,15 @@ def expand_edge(graph: Graph) -> tuple[Graph, bool]:
     # delete the edge
     graph.edge_list.remove(random_edge)
 
+    op_names = operator_node_names
+    op_probs = [mutation_hps.operator_probabilities[op] for op in op_names]
+
     # select a random operator
-    op_to_use = random.choice(operator_nodes)
+    op_name_to_use = random.choices(op_names, weights=op_probs)[0]
+
+    new_node = node_from_name(op_name_to_use)
 
     # create a new node
-    new_node = op_to_use()
     node_id = graph.add_node(new_node)
 
     # add the new edges
@@ -91,8 +117,8 @@ def expand_edge(graph: Graph) -> tuple[Graph, bool]:
 
     return graph, True
 
-def add_parameter(graph: Graph) -> tuple[Graph, bool]:
-    available_nodes = available_opnodes(graph)
+def add_parameter(graph: Graph, mutation_hps) -> tuple[Graph, bool]:
+    available_nodes = available_opnodes(graph, no_single_params=True)
 
     if len(available_nodes) == 0:
         return graph, False
@@ -113,7 +139,7 @@ def add_parameter(graph: Graph) -> tuple[Graph, bool]:
     return graph, True
 
 
-def add_edge(graph: Graph, tries: int = 30) -> tuple[Graph, bool]:
+def add_edge(graph: Graph, mutation_hps, tries: int = 30) -> tuple[Graph, bool]:
 
     output_nodes = set(graph.output_nodes())
 
@@ -143,7 +169,7 @@ def add_edge(graph: Graph, tries: int = 30) -> tuple[Graph, bool]:
 
     return graph, False
 
-def delete_edge(graph: Graph, tries=100) -> tuple[Graph, bool]:
+def delete_edge(graph: Graph, mutation_hps, tries=100) -> tuple[Graph, bool]:
     g_nx = graph.get_nx()
 
     adj_list = graph.adjacency_list()
@@ -173,7 +199,7 @@ def delete_edge(graph: Graph, tries=100) -> tuple[Graph, bool]:
         
     return graph, False
 
-def delete_parameter(graph: Graph, tries=30) -> tuple[Graph, bool]:
+def delete_parameter(graph: Graph, mutation_hps, tries=30) -> tuple[Graph, bool]:
     paramnodes = [
         node_id for node_id in graph.node_ids
         if isinstance(graph.id_to_node[node_id], ParameterNode)
@@ -214,7 +240,7 @@ def delete_parameter(graph: Graph, tries=30) -> tuple[Graph, bool]:
 
     return graph, False
 
-def delete_operator(graph: Graph, tries=30) -> tuple[Graph, bool]:
+def delete_operator(graph: Graph, mutation_hps, tries=30) -> tuple[Graph, bool]:
     opnodes = graph.operator_nodes()
 
     if len(opnodes) == 0:
@@ -296,5 +322,109 @@ def delete_operator(graph: Graph, tries=30) -> tuple[Graph, bool]:
     
     return graph, False
 
-    
+mutation_functions: dict[str, Callable[[Graph, GraphMutHP], tuple[Graph, bool]]] = {
+    'expand_edge': expand_edge,
+    'add_edge': add_edge,
+    'add_parameter': add_parameter,
+    'delete_operator': delete_operator,
+    'delete_edge': delete_edge,
+    'delete_parameter': delete_parameter
+}
 
+def random_graph_mut_hps(evolution_config: EvolutionConfig) -> GraphMutHP:
+    probs = {}
+    for k in mutation_functions.keys():
+        probs[k] = random.uniform(0, 1)
+
+    if evolution_config.mutate_num_mutations:
+        max_num_mutations=random.randint(1, 10)
+    else:
+        assert evolution_config.max_num_mutations is not None
+        max_num_mutations = evolution_config.max_num_mutations
+
+    operator_probabilities = {
+        op: random.uniform(0, 1)
+        for op in operator_node_names
+    }
+
+    return GraphMutHP(
+        mutation_probabilities=probs,
+        max_num_mutations=max_num_mutations,
+        operator_probabilities=operator_probabilities
+    )
+
+def mutate_graph(graph: Graph, mutation_hyperparams: GraphMutHP) -> Graph:
+    mutated = graph
+
+    max_num_mutations = mutation_hyperparams.max_num_mutations
+    names, probs = zip(*list(mutation_hyperparams.mutation_probabilities.items()))
+
+    mutations_performed = 0
+    num_mutations = random.randint(1, max_num_mutations)
+    while mutations_performed < num_mutations:
+        mutation_name = random.choices(names, weights=probs)[0]
+        mutation_function = mutation_functions[mutation_name]
+        mutated, changed = mutation_function(mutated, mutation_hyperparams)
+
+        try:
+            check_validity(mutated)
+        except Exception as e:
+            print("Tried to mutate with {} but failed".format(mutation_function))
+            print(e)
+            show_graph(mutated)
+            raise e
+
+        if changed:
+            mutations_performed += 1
+
+    return mutated
+
+def mutate_graph_hps(
+    hp: GraphMutHP, 
+    evolution_config: EvolutionConfig
+):
+    new_hp = deepcopy(hp)
+
+    if evolution_config.mutate_num_mutations:
+        new_hp.max_num_mutations = max(hp.max_num_mutations + random.choice([-1, 0, 1]), 1)
+    else:
+        new_hp.max_num_mutations = hp.max_num_mutations
+
+    new_probs = {}
+    for k, v in hp.mutation_probabilities.items():
+        new_probs[k] = v * random.uniform(0.8, 1.2)
+
+    new_hp.mutation_probabilities = new_probs
+
+    new_operator_probs = {}
+    for k, v in hp.operator_probabilities.items():
+        new_operator_probs[k] = v * random.uniform(0.8, 1.2)
+
+    return new_hp
+    
+def recombine_graph_hps(hp1: GraphMutHP, hp2: GraphMutHP, evolution_config: EvolutionConfig) -> GraphMutHP:
+    new_hp = deepcopy(hp1)
+
+    if evolution_config.mutate_num_mutations:
+        new_hp.max_num_mutations = max(
+            int((hp1.max_num_mutations + hp2.max_num_mutations) / 2),
+            1
+        )
+    else:
+        new_hp.max_num_mutations = hp1.max_num_mutations
+
+    new_probs = {}
+    for k in hp1.mutation_probabilities.keys():
+        new_probs[k] = (hp1.mutation_probabilities[k] + hp2.mutation_probabilities[k]) / 2
+
+    new_hp.mutation_probabilities = new_probs
+
+    new_op_probs = {}
+    for k in hp1.operator_probabilities.keys():
+        new_op_probs[k] = (hp1.operator_probabilities[k] + hp2.operator_probabilities[k]) / 2
+
+    new_hp.operator_probabilities = new_op_probs
+    return new_hp
+
+def recombine_graphs(graph1: Graph, graph2: Graph, hp: GraphMutHP) -> Graph:
+    return graph1

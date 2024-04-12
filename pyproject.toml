@@ -12,13 +12,13 @@ fire = "^0.5.0"
 tyro = "^0.6.0"
 mypy = "^1.9.0"
 flags = "^0.0.1.2"
-torch = "^2.2.2"
 numpy = "^1.26.4"
 networkx = "^3.2.1"
 matplotlib = "^3.8.4"
 graphviz = "^0.20.3"
 einops = "^0.7.0"
 tqdm = "^4.66.2"
+torch = {version = "^2.2.2+cpu", source = "pytorch_cpu"}
 
 [tool.poetry.group.dev.dependencies]
 jupyterlab = "^3.6.2"
@@ -36,6 +36,12 @@ sybil = "^5.0.3"
 [tool.poetry.group.third_party.dependencies]
 munkres = "1.1.4"
 ffmpeg = "^1.4"
+
+
+[[tool.poetry.source]]
+name = "pytorch_cpu"
+url = "https://download.pytorch.org/whl/cpu"
+priority = "explicit"
 
 [tool.ruff]
 # Enable pycodestyle (`E`) and Pyflakes (`F`) codes by default.
