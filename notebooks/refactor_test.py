@@ -48,6 +48,10 @@ graph_spec = {
             "subgraph_idx": 0
         },
         {
+            "name": "graph",
+            "subgraph_idx": 0
+        },
+        {
             "name": "output"
         }
     ],
@@ -55,10 +59,11 @@ graph_spec = {
         [],
         [],
         [0, 1],
-        [2]
+        [2, 2],
+        [3]
     ],
     "input_node_order": [0, 1],
-    "output_node_order": [3]
+    "output_node_order": [4]
 }
     
 
