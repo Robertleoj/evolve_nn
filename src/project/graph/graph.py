@@ -10,8 +10,8 @@ TODO: check that:
 * Operator nodes only point to Data nodes
 * Data nodes only point to Operator nodes
 """
-from webbrowser import Opera
 import torch
+from contextlib import nullcontext
 import math
 from typing import Any
 from dataclasses import dataclass
@@ -21,9 +21,112 @@ import torch.nn as nn
 from uuid import uuid4
 from graphviz import Digraph
 from IPython.display import SVG, display
-from project.graph.nodes import DataNode, InputNode, Node, OperatorNode, OutputNode, ParameterNode, node_from_spec
 from project.utils.graph_utils import topsort_edge_list
 import networkx as nx
+
+class Node:
+    """Base class for all nodes in the graph."""
+    name: str
+
+
+# Data nodes
+class DataNode(Node):
+    """A node that represents data."""
+
+class InputNode(DataNode):
+    """A node that represents input data."""
+    name = "input"
+
+class OutputNode(DataNode):
+    """A node that represents output data."""
+    name = "output"
+
+class ParameterNode(DataNode):
+    """A node that represents a learnable parameter."""
+    name= "parameter"
+
+
+# operator nodes
+class OperatorNode(Node):
+    """A node that represents an operation.
+
+    Attributes:
+        input_shapes: Shapes of the input tensors.
+        output_shapes: Shapes of the output tensors.
+    """
+
+    n_inputs: tuple[int, int | None]
+    inputs_ordered: bool = False
+
+    def get_op(self) -> nn.Module:
+        """Perform the operation."""
+        raise NotImplementedError
+
+class AddMod(nn.Module):
+    def forward(self, inp: list[torch.Tensor]) -> torch.Tensor:
+        return sum(inp) # type: ignore
+class AddNode(OperatorNode):
+    """A node that adds two or more tensors."""
+    name="add"
+    n_inputs = (1, None)
+
+    def get_op(self) -> nn.Module:
+        """Perform the addition operation."""
+        return AddMod()
+        
+
+class ProdMod(nn.Module):
+    def forward(self, inp: list[torch.Tensor]) -> torch.Tensor:
+        return math.prod(inp) # type: ignore
+class ProdNode(OperatorNode):
+    """A node that multiplies two or more tensors."""
+    name="prod"
+    n_inputs = (1, None)
+
+    def get_op(self) -> nn.Module:
+        """Perform the multiplication operation."""
+        return ProdMod()
+
+
+class GELUMod(nn.Module):
+    def forward(self, inp: list[torch.Tensor]) -> torch.Tensor:
+        return nn.functional.gelu(inp[0])
+class GELUNode(OperatorNode):
+    """A node that applies the ReLu function."""
+    name="GELU"
+    n_inputs = (1, 1)
+
+    def get_op(self) -> nn.Module:
+        """Perform the ReLu operation."""
+        return GELUMod()
+
+class LogMod(nn.Module):
+    def forward(self, inp: list[torch.Tensor]) -> torch.Tensor:
+        return torch.log(inp[0])
+
+class LogNode(OperatorNode):
+    """A node that applies the log function."""
+    name="log"
+
+    n_inputs = (1, 1)
+
+    def get_op(self) -> nn.Module:
+        """Perform the log operation."""
+        return LogMod()
+
+class ExpMod(nn.Module):
+    def forward(self, inp: list[torch.Tensor]) -> torch.Tensor:
+        return torch.exp(inp[0])
+class ExpNode(OperatorNode):
+    """A node that applies the exp function."""
+
+    name = "exp"
+    n_inputs = (1, 1)
+
+    def forward(self, inputs: list[torch.Tensor]) -> torch.Tensor:
+        """Perform the exp operation."""
+        return torch.exp(inputs[0])
+
 
 
 @dataclass
@@ -39,6 +142,9 @@ class Graph:
 
     id_to_node: dict[str, Node]
     rev_adj_list: dict[str, list[str]]
+    ordered_input_nodes: list[str]
+    ordered_output_nodes: list[str]
+    subgraphs: list["Graph"]
 
     def add_node(self, node: Node) -> str:
         node_id = str(uuid4())
@@ -83,12 +189,43 @@ class Graph:
                 graph.add_edge(neighbor, node_id)
         return graph
 
+class SubGraphNode(OperatorNode):
+    """A node that represents a subgraph."""
+
+    name = "graph"
+    subgraph: Graph
+
+    def __init__(self, subgraph: Graph) -> None:
+        num_inputs = len(subgraph.ordered_input_nodes)
+        self.subgraph = subgraph
+        self.num_inputs = (num_inputs, num_inputs)
+
+    def get_op(self) -> "CompiledGraph":
+        return SubCompiledGraph.from_graph(self.subgraph)
+
 
 def make_graph(
     node_specs: list[dict[str, Any]],
-    rev_adj_list: list[tuple[int, int]]
+    rev_adj_list: list[tuple[int, int]],
+    input_node_order: list[int],
+    subgraph_specs: list[dict[str, Any]] | None = None,
+    output_node_order: list[int] | None = None
 ) -> Graph:
-    nodes = [node_from_spec(spec) for spec in node_specs]
+
+    subgraphs = []
+    if subgraph_specs is not None:
+        for spec in subgraph_specs:
+            subgraphs.append(make_graph(**spec))
+
+    nodes = []
+    for spec in node_specs:
+        if spec['name'] == 'graph':
+            subgraph_idx = spec['subgraph_idx']
+            node = SubGraphNode(subgraph=subgraphs[subgraph_idx])
+            nodes.append(node)
+        else:
+            nodes.append(node_from_spec(spec))
+
     node_ids = [str(uuid4()) for _ in nodes]
 
     id_rev_adj_list = defaultdict(list)
@@ -98,54 +235,24 @@ def make_graph(
             neighbor_id = node_ids[neighbor_idx]
             id_rev_adj_list[node_id].append(neighbor_id)
 
+    input_node_id_order = [node_ids[i] for i in input_node_order]
+    if output_node_order is None:
+        first_output_node = None
+        for i, node in enumerate(nodes):
+            if isinstance(node, OutputNode):
+                first_output_node = i
+                break
+        output_node_order = [first_output_node]
+
+    output_node_id_order = [node_ids[i] for i in output_node_order]
+
     return Graph(
         id_to_node=dict(zip(node_ids, nodes)),
         rev_adj_list=id_rev_adj_list,
+        ordered_input_nodes=input_node_id_order,
+        ordered_output_nodes=output_node_id_order,
+        subgraphs=subgraphs
     )
-
-def show_graph(graph: Graph) -> None:
-    """Show the graph using Graphviz."""
-    dot = Digraph()
-
-    for node_id, node in graph.id_to_node.items():
-        label = node.name
-        if isinstance(node, DataNode):
-            dot.node(node_id, label=label)
-        elif isinstance(node, OperatorNode):
-            dot.node(node_id, label=label, shape="box")
-
-    for node_id, backward_neighbors in graph.rev_adj_list.items():
-        for i, neighbor_id in enumerate(backward_neighbors):
-            dot.edge(neighbor_id, node_id, label=str(i))
-
-    svg = dot.pipe(format="svg").decode("utf-8")
-    display(SVG(svg))
-
-def show_multiple_graphs(graphs: list[Graph]) -> None:
-    """Show multiple graphs in a single figure, each graph labeled by its index."""
-    dot = Digraph()
-    dot.attr(compound='true')
-
-    for index, graph in enumerate(graphs):
-        with dot.subgraph(name=f'cluster_{index}') as c:
-            c.attr(label=f'Graph {index}')
-            for node_id, node in graph.id_to_node.items():
-                label = node.name
-                name = f"{node_id}_{index}"
-                if isinstance(node, DataNode):
-                    c.node(name, label=label)
-                elif isinstance(node, OperatorNode):
-                    c.node(name, label=label, shape="box")
-
-            for node_id, backward_neighbors in graph.rev_adj_list.items():
-                for i, back_neighbor_id in enumerate(backward_neighbors):
-                    source = f"{back_neighbor_id}_{index}"
-                    target = f"{node_id}_{index}"
-                    c.edge(source, target, label=str(i))
-
-    svg = dot.pipe(format="svg").decode("utf-8")
-    display(SVG(svg))
-
 
 
 class CompiledGraph(nn.Module):
@@ -164,8 +271,8 @@ class CompiledGraph(nn.Module):
     rev_adjacency_list: list[list[int]]
     input_nodes: list[int]
     output_nodes: list[int]
-    _modules: nn.ModuleDict
-    _parameters: nn.ParameterDict
+    stored_modules: nn.ModuleDict
+    stored_parameters: nn.ParameterDict
     
 
     def __init__(
@@ -209,15 +316,15 @@ class CompiledGraph(nn.Module):
         
         self.rev_adjacency_list = sorted_rev_adj_list
 
-        self._modules = nn.ModuleDict()
+        self.stored_modules = nn.ModuleDict()
         for node_id, node in enumerate(self.nodes):
             if isinstance(node, OperatorNode):
-                self._modules[str(node_id)] = node.get_op()
+                self.stored_modules[str(node_id)] = node.get_op()
 
-        self._parameters = nn.ParameterDict()
+        self.stored_parameters = nn.ParameterDict()
         for node_id, node in enumerate(self.nodes):
             if isinstance(node, ParameterNode):
-                self._parameters[str(node_id)] = nn.Parameter(torch.empty(1))
+                self.stored_parameters[str(node_id)] = nn.Parameter(torch.empty(1))
 
         self.reset_parameters()
 
@@ -226,7 +333,7 @@ class CompiledGraph(nn.Module):
 
     def reset_parameters(self) -> None:
         """Reset the parameters of the graph."""
-        for param in self._parameters.values():
+        for param in self.stored_parameters.values():
             nn.init.normal_(param, mean=0, std=1 / math.sqrt(2))
 
     @classmethod
@@ -274,15 +381,15 @@ class CompiledGraph(nn.Module):
         for node_id, input in zip(self.input_nodes, inputs):
             data[node_id] = input
 
-        for node_id, param in self._parameters.items():
+        for node_id, param in self.stored_parameters.items():
             data[int(node_id)] = param
 
         for node_id in range(len(self.nodes)):
-            self._infer_node(node_id, data)
+            self.infer_node(node_id, data)
 
         return [data[node_id] for node_id in self.output_nodes]
 
-    def _infer_node(self, node_id: int, data: list[None | torch.Tensor]) -> None:
+    def infer_node(self, node_id: int, data: list[None | torch.Tensor]) -> None:
         """Infer the value of a node.
 
         Args:
@@ -309,7 +416,7 @@ class CompiledGraph(nn.Module):
                 assert inp_data is not None, f"Inferring node {node_id}: node {i} has not been inferred yet."
                 input_data.append(inp_data)
 
-            op = self._modules[str(node_id)]
+            op = self.stored_modules[str(node_id)]
             data[node_id] = op(input_data)
 
 
@@ -336,4 +443,134 @@ def show_compiled(graph: CompiledGraph) -> None:
     display(SVG(svg))
 
 
+class SubCompiledGraph(CompiledGraph):
+
+    def forward(self, inputs: list[torch.Tensor]) -> torch.Tensor: # type: ignore
+        outputs = super().forward(inputs)
+        return outputs[0]
+
+
+def make_recursive_graph(graph: Graph, dot: Digraph | None = None) -> Digraph:
+
+    if dot is None:
+        dot = Digraph()
+
+    for node_id, node in graph.id_to_node.items():
+
+        label = node.name
+
+        if isinstance(node, DataNode):
+            if isinstance(node, InputNode):
+                input_idx = next(
+                    i for i, iter_node_id in enumerate(
+                        graph.ordered_input_nodes
+                    ) if node_id == iter_node_id
+                )
+
+                label = f"{node.name} {input_idx}"
+            dot.node(node_id, label=label)
+        elif isinstance(node, SubGraphNode):
+            subgraph_idx = None
+            for i, subgraph in enumerate(graph.subgraphs):
+                if subgraph is node.subgraph:
+                    subgraph_idx = i
+                    break
+            assert subgraph_idx is not None, "Subgraph not found."
+            label = f"{node.name} {subgraph_idx}"
+            dot.node(node_id, label=label, shape="box")
+
+        elif isinstance(node, OperatorNode):
+            dot.node(node_id, label=label, shape="box")
+
+    for node_id, backward_neighbors in graph.rev_adj_list.items():
+        for i, neighbor_id in enumerate(backward_neighbors):
+            dot.edge(neighbor_id, node_id, label=str(i))
+
+
+    for i, subgraph in enumerate(graph.subgraphs):
+
+        with dot.subgraph(name="cluster_" + str(uuid4())) as sg:
+            make_recursive_graph(subgraph, dot=sg)
+            label = f"Graph {i}"
+            sg.attr(label=label)
+
+    return dot
+
+def show_graph(graph: Graph) -> None:
+    """Show the graph using Graphviz."""
+    dot = make_recursive_graph(graph)
+    svg = dot.pipe(format="svg").decode("utf-8")
+    display(SVG(svg))
+
+def show_multiple_graphs(graphs: list[Graph]) -> None:
+    """Show multiple graphs in a single figure, each graph labeled by its index."""
+    dot = Digraph()
+    dot.attr(compound='true')
+
+    for index, graph in enumerate(graphs):
+        with dot.subgraph(name=f'cluster_{index}') as c:
+            c.attr(label=f'Graph {index}')
+            for node_id, node in graph.id_to_node.items():
+                label = node.name
+                name = f"{node_id}_{index}"
+                if isinstance(node, DataNode):
+                    c.node(name, label=label)
+                elif isinstance(node, OperatorNode):
+                    c.node(name, label=label, shape="box")
+
+            for node_id, backward_neighbors in graph.rev_adj_list.items():
+                for i, back_neighbor_id in enumerate(backward_neighbors):
+                    source = f"{back_neighbor_id}_{index}"
+                    target = f"{node_id}_{index}"
+                    c.edge(source, target, label=str(i))
+
+    svg = dot.pipe(format="svg").decode("utf-8")
+    display(SVG(svg))
+
+
+op_nodes = [
+    AddNode,
+    ProdNode,
+    GELUNode,
+    ExpNode,
+    SubGraphNode
+]
+
+data_nodes = [
+    InputNode,
+    OutputNode,
+    ParameterNode,
+]
+
+op_node_name_to_node = {
+    node.name: node
+    for node in op_nodes
+}
+
+data_node_name_to_node = {
+    node.name: node
+    for node in data_nodes
+
+}
+
+node_name_to_node = {
+    **op_node_name_to_node,
+    **data_node_name_to_node,
+}
+
+def node_from_spec(spec: dict[str, Any]) -> Node:
+    """Create a node from a dictionary representation.
+
+    Args:
+        spec: Dictionary representation of the node.
+
+    Returns:
+        Node: The node.
+    """
+
+    node_name = spec['name']
+    node=  node_name_to_node[node_name]
+    if 'args' in spec:
+        return node(**spec['args'])
+    return node()
 

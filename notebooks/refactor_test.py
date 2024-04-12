@@ -17,34 +17,62 @@
 # %%
 # %load_ext autoreload
 # %autoreload 2
-from project.graph.graph import Graph, make_graph, show_graph
+from project.graph.graph import Graph, make_graph, show_graph, CompiledGraph
+import torch
 
 # %%
-node_specs = [
-    {
-        "name": "input"
-    },
-    {
-        "name": "input"
-    },
-    {
-        "name": "add"
-    },
-    {
-        "name": "output"
-    }
-]
+graph_spec = {
+    "subgraph_specs": [
+        {
+            "node_specs": [
+                {"name": "input"},
+                {"name": "input"},
+                {"name": "add"},
+                {"name": "output"}
+            ],
+            "rev_adj_list": [
+                [], [], [0, 1], [2]
+            ],
+            "input_node_order": [0, 1]
+        }
+    ],
+    "node_specs": [
+        {
+            "name": "input"
+        },
+        {
+            "name": "input"
+        },
+        {
+            "name": "graph",
+            "subgraph_idx": 0
+        },
+        {
+            "name": "output"
+        }
+    ],
+    "rev_adj_list":  [
+        [],
+        [],
+        [0, 1],
+        [2]
+    ],
+    "input_node_order": [0, 1],
+    "output_node_order": [3]
+}
+    
 
 # %%
-rev_adj_list = [
-    [],
-    [],
-    [0, 1],
-    [2]
-]
+g = make_graph(**graph_spec)
 
 # %%
-graph = make_graph(node_specs, rev_adj_list)
+g.subgraphs
 
 # %%
-show_graph(graph)
+show_graph(g)
+
+# %%
+compiled = CompiledGraph.from_graph(g)
+
+# %%
+compiled([torch.tensor([1, 2]), torch.tensor([4, 5])])
