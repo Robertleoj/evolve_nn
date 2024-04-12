@@ -1,6 +1,7 @@
 """Mutation operators for graphs"""
 from project.graph_novec.graph import Graph, show_graph
 from project.graph_novec.nodes import DataNode, OperatorNode, operator_nodes, node_from_name, ParameterNode
+from project.type_defs import EvolutionConfig
 import random
 import networkx as nx
 from dataclasses import dataclass
@@ -43,13 +44,25 @@ def check_validity(graph: Graph):
     
     
 
-def available_opnodes(graph: Graph) -> list[str]:
+def available_opnodes(graph: Graph, no_single_params: bool = False) -> list[str]:
     opnodes = graph.operator_nodes()
     adj_list = graph.adjacency_list(reverse=True)
+    forward_adj_list = graph.adjacency_list()
     
     available_nodes = []
 
     for node_id in opnodes:
+        inputs = adj_list[node_id]
+        if no_single_params:
+            found_single_param = False
+            for i in inputs:
+                if isinstance(graph.id_to_node[i], ParameterNode):
+                    if len(set(forward_adj_list[i])) == 1:
+                        found_single_param = True
+                        break
+            if found_single_param:
+                continue
+
         lower_bound, upper_bound = graph.id_to_node[node_id].n_inputs
 
         if upper_bound is None:
@@ -93,7 +106,7 @@ def expand_edge(graph: Graph) -> tuple[Graph, bool]:
     return graph, True
 
 def add_parameter(graph: Graph) -> tuple[Graph, bool]:
-    available_nodes = available_opnodes(graph)
+    available_nodes = available_opnodes(graph, no_single_params=True)
 
     if len(available_nodes) == 0:
         return graph, False
@@ -311,14 +324,20 @@ class GraphMutHP:
     max_num_mutations: int
     mutation_probabilities: dict[str, float]
 
-def random_graph_mut_hps():
+def random_graph_mut_hps(evolution_config: EvolutionConfig) -> GraphMutHP:
     probs = {}
     for k in mutation_functions.keys():
         probs[k] = random.uniform(0, 1)
 
+    if evolution_config.mutate_num_mutations:
+        max_num_mutations=random.randint(1, 10)
+    else:
+        assert evolution_config.max_num_mutations is not None
+        max_num_mutations = evolution_config.max_num_mutations
+
     return GraphMutHP(
-        max_num_mutations=random.randint(1, 10),
-        mutation_probabilities=probs
+        mutation_probabilities=probs,
+        max_num_mutations=max_num_mutations
     )
 
 def mutate_graph(graph: Graph, mutation_hyperparams: GraphMutHP) -> Graph:
@@ -347,9 +366,16 @@ def mutate_graph(graph: Graph, mutation_hyperparams: GraphMutHP) -> Graph:
 
     return mutated
 
-def mutate_graph_hps(hp: GraphMutHP):
+def mutate_graph_hps(
+    hp: GraphMutHP, 
+    evolution_config: EvolutionConfig
+):
     new_hp = deepcopy(hp)
-    new_hp.max_num_mutations = max(hp.max_num_mutations + random.choice([-1, 0, 1]), 1)
+
+    if evolution_config.mutate_num_mutations:
+        new_hp.max_num_mutations = max(hp.max_num_mutations + random.choice([-1, 0, 1]), 1)
+    else:
+        new_hp.max_num_mutations = hp.max_num_mutations
 
     new_probs = {}
     for k, v in hp.mutation_probabilities.items():
@@ -359,10 +385,13 @@ def mutate_graph_hps(hp: GraphMutHP):
 
     return new_hp
     
-def recombine_graph_hps(hp1: GraphMutHP, hp2: GraphMutHP) -> GraphMutHP:
+def recombine_graph_hps(hp1: GraphMutHP, hp2: GraphMutHP, evolution_config: EvolutionConfig) -> GraphMutHP:
     new_hp = deepcopy(hp1)
 
-    new_hp.max_num_mutations = random.choice([hp1.max_num_mutations, hp2.max_num_mutations])
+    if evolution_config.mutate_num_mutations:
+        new_hp.max_num_mutations = random.choice([hp1.max_num_mutations, hp2.max_num_mutations])
+    else:
+        new_hp.max_num_mutations = hp1.max_num_mutations
 
     new_probs = {}
     for k in hp1.mutation_probabilities.keys():

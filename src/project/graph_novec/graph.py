@@ -177,4 +177,27 @@ def show_graph(graph: Graph) -> None:
     svg = dot.pipe(format="svg").decode("utf-8")
     display(SVG(svg))
 
+def show_multiple_graphs(graphs: list[Graph]) -> None:
+    """Show multiple graphs in a single figure, each graph labeled by its index."""
+    dot = Digraph()
+    dot.attr(compound='true')
+
+    for index, graph in enumerate(graphs):
+        with dot.subgraph(name=f'cluster_{index}') as c:
+            c.attr(label=f'Graph {index}')
+            for node_id, node in zip(graph.node_ids, graph.nodes):
+                label = node.name
+                name = f"{node_id}_{index}"
+                if isinstance(node, DataNode):
+                    c.node(name, label=label)
+                elif isinstance(node, OperatorNode):
+                    c.node(name, label=label, shape="box")
+
+            for source_id, target_id in graph.edge_list:
+                source_name = f"{source_id}_{index}"
+                target_name = f"{target_id}_{index}"
+                c.edge(source_name, target_name)
+
+    svg = dot.pipe(format="svg").decode("utf-8")
+    display(SVG(svg))
 
