@@ -35,3 +35,8 @@ def random_individual(init_graph_spec: dict, evolution_config: EvolutionConfig) 
     init_training_hp = random_training_hp()
 
     return Individual(graph_mut_hps=init_hps, graph=init_graph, training_hp=init_training_hp)
+
+
+def initialize_population(init_spec: dict, evolution_config: EvolutionConfig) -> list[Individual]:
+    population = [random_individual(init_spec, evolution_config) for _ in range(evolution_config.population_size)]
+    return population
