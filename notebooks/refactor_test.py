@@ -18,7 +18,7 @@
 # %load_ext autoreload
 # %autoreload 2
 import torch
-from project.graph.graph import CompiledGraph, make_graph, show_graph
+from project.graph.graph import CompiledGraph, make_graph, show_graph, SubGraphNode, OperatorNode
 from project.variation_ops.graph_mutation import (
     expand_edge,
     add_parameter,
@@ -63,6 +63,18 @@ g.subgraphs
 show_graph(g)
 
 # %%
+g.id_to_node
+
+# %%
+n = next(n for n_id, n in g.id_to_node.items() if isinstance(n, SubGraphNode))
+
+# %%
+type(n)
+
+# %%
+isinstance(n, OperatorNode)
+
+# %%
 compiled = CompiledGraph.from_graph(g)
 
 # %%
@@ -86,9 +98,9 @@ for _ in range(20):
         print(mutated.id_to_node)
         raise e
 
-show_graph(mutated)
+show_graph(mutated, show_node_ids=False)
 mut_compiled = CompiledGraph.from_graph(mutated)
-show_compiled(mut_compiled)
+# show_compiled(mut_compiled)
 display(mut_compiled([torch.tensor([1.0, 2.0]), torch.tensor([4.0, 5.0])]))
 # mutated, changed = expand_edge(mutated, graph_mut_hps)
 # mutated, changed = add_parameter(mutated, graph_mut_hps)

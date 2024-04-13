@@ -146,9 +146,9 @@ class ExpNode(OperatorNode):
     name = "exp"
     n_inputs = (1, 1)
 
-    def forward(self, inputs: list[torch.Tensor]) -> torch.Tensor:
+    def get_op(self) -> nn.Module:
         """Perform the exp operation."""
-        return torch.exp(inputs[0])
+        return ExpMod()
 
 
 class Graph:
@@ -192,6 +192,7 @@ class Graph:
         self.subgraphs = subgraphs
 
     def add_node(self, node: Node) -> str:
+        assert isinstance(node, Node)
         node_id = str(uuid4())
         self.id_to_node[node_id] = node
         self.rev_adj_list[node_id] = []
@@ -513,20 +514,23 @@ class SubCompiledGraph(CompiledGraph):
         return outputs[0]
 
 
-def make_recursive_graph(graph: Graph, dot: Digraph | None = None) -> Digraph:
+def make_recursive_graph(graph: Graph, dot: Digraph | None = None, show_node_ids: bool = False) -> Digraph:
     if dot is None:
         dot = Digraph()
 
     for node_id, node in graph.id_to_node.items():
-        label = node.name
+        name = node.name
+        if show_node_ids:
+            name = f"{name} ({node_id})"
 
+        label = name
         if isinstance(node, DataNode):
             if isinstance(node, InputNode):
                 input_idx = next(
                     i for i, iter_node_id in enumerate(graph.ordered_input_nodes) if node_id == iter_node_id
                 )
 
-                label = f"{node.name} {input_idx}"
+                label = f"{name} {input_idx}"
             dot.node(node_id, label=label)
         elif isinstance(node, SubGraphNode):
             subgraph_idx = None
@@ -535,7 +539,7 @@ def make_recursive_graph(graph: Graph, dot: Digraph | None = None) -> Digraph:
                     subgraph_idx = i
                     break
             assert subgraph_idx is not None, "Subgraph not found."
-            label = f"{node.name} {subgraph_idx}"
+            label = f"{name} {subgraph_idx}"
             dot.node(node_id, label=label, shape="box")
 
         elif isinstance(node, OperatorNode):
@@ -547,16 +551,16 @@ def make_recursive_graph(graph: Graph, dot: Digraph | None = None) -> Digraph:
 
     for i, subgraph in enumerate(graph.subgraphs):
         with dot.subgraph(name="cluster_" + str(uuid4())) as sg:
-            make_recursive_graph(subgraph, dot=sg)
+            make_recursive_graph(subgraph, dot=sg, show_node_ids=show_node_ids)
             label = f"Graph {i}"
             sg.attr(label=label)
 
     return dot
 
 
-def show_graph(graph: Graph) -> None:
+def show_graph(graph: Graph, show_node_ids: bool = False) -> None:
     """Show the graph using Graphviz."""
-    dot = make_recursive_graph(graph)
+    dot = make_recursive_graph(graph, show_node_ids=show_node_ids)
     svg = dot.pipe(format="svg").decode("utf-8")
     display(SVG(svg))
 
