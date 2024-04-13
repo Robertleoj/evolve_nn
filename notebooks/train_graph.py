@@ -26,8 +26,7 @@
 import matplotlib.pyplot as plt
 import torch
 from einops import rearrange
-from project.graph.graph import Graph, make_graph, show_graph, show_compiled
-from project.graph.graph import CompiledGraph
+from project.graph.graph import CompiledGraph, make_graph, show_compiled, show_graph
 from tqdm import tqdm
 
 # %%
@@ -52,9 +51,7 @@ graph_spec = {
         {"name": "add"},
         {"name": "output"},
     ],
-    "rev_adj_list": [
-        [], [], [0, 1], [], [2, 3], [4]
-    ],
+    "rev_adj_list": [[], [], [0, 1], [], [2, 3], [4]],
     "input_node_order": [0],
     "output_node_order": [5],
 }
