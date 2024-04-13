@@ -26,7 +26,8 @@
 import matplotlib.pyplot as plt
 import torch
 from einops import rearrange
-from project.graph import graph
+from project.graph.graph import Graph, make_graph, show_graph, show_compiled
+from project.graph.graph import CompiledGraph
 from tqdm import tqdm
 
 # %%
@@ -44,46 +45,38 @@ plt.plot(x, y_clean, color="red")
 x_dim = 1
 graph_spec = {
     "node_specs": [
-        {"name": "input", "shape": (x_dim, 1)},
-        {
-            "name": "parameter",
-            "shape": (
-                x_dim,
-                x_dim,
-            ),
-        },
-        {"name": "matmul", "input_shapes": [(x_dim, x_dim), (x_dim, 1)], "shape": (x_dim, 1)},
-        {"name": "parameter", "shape": (x_dim, 1)},
-        {"name": "add", "input_shapes": [(x_dim, 1), (x_dim, 1)], "shape": (x_dim, 1)},
-        {"name": "output", "shape": (x_dim, 1)},
+        {"name": "input"},
+        {"name": "parameter"},
+        {"name": "prod"},
+        {"name": "parameter"},
+        {"name": "add"},
+        {"name": "output"},
     ],
-    "edge_list": [(0, 2), (1, 2), (2, 4), (3, 4), (4, 5)],
-    "index_map": {
-        (0, 2): 1,
-        (1, 2): 0,
-        (2, 4): 1,
-        (3, 4): 0,
-    },
+    "rev_adj_list": [
+        [], [], [0, 1], [], [2, 3], [4]
+    ],
+    "input_node_order": [0],
+    "output_node_order": [5],
 }
 
 # %%
-net_graph = graph.Graph(**graph_spec)
-net_graph.show()
+net_graph = make_graph(**graph_spec)
+show_graph(net_graph)
 
 # %%
-compiled = graph.CompiledGraph.from_graph(net_graph)
+compiled = CompiledGraph.from_graph(net_graph)
+show_compiled(compiled)
 
 # %%
-compiled._parameters
+compiled.stored_parameters
 
 # %%
-compiled(torch.tensor([[1.0]]))
+with torch.no_grad():
+    display(compiled(torch.tensor([[1.0]])))
 
 # %%
 loss_fn = torch.nn.MSELoss()
-
-# %%
-optimizer = torch.optim.SGD(compiled.parameters(), lr=1e-3, momentum=0.9)
+optimizer = torch.optim.Adam(compiled.parameters(), lr=1e-2)
 
 # %%
 
