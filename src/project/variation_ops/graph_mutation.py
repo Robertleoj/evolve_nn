@@ -1,33 +1,33 @@
 """Mutation operators for graphs."""
 import random
-from copy import deepcopy
-from dataclasses import dataclass
-from queue import deque
 from collections import defaultdict
+from copy import deepcopy
+from queue import deque
 from typing import Callable
 
 import networkx as nx
+
 from project.graph.graph import (
     Graph,
-    show_graph,
-    ParameterNode,
-    op_node_name_to_node,
-    OperatorNode,
-    node_name_to_node,
     Node,
+    OperatorNode,
+    ParameterNode,
+    node_name_to_node,
+    op_node_name_to_node,
+    show_graph,
 )
-from project.type_defs import EvolutionConfig, GraphMutHP
+from project.type_defs import GraphMutHP
 
 DEFAULT_NUM_TRIES = 5
 
+
 def get_reverse_lengths(graph: Graph) -> dict:
     """Using DFS from input nodes, get the number of reverse edges needed to reach each node."""
-    
     # Reverse distances dictionary initialized to infinity
     rev_distances = defaultdict(lambda: float("inf"))
     # Initializing deque with input nodes and distance 0
     queue = deque([(node_id, 0) for node_id in graph.input_nodes()])
-    
+
     while queue:
         current_id, current_distance = queue.popleft()
         # Update the reverse distance if a shorter path is found
@@ -40,22 +40,22 @@ def get_reverse_lengths(graph: Graph) -> dict:
             # Reverse edges: increment distance by 1
             for neighbor_id in graph.rev_adj_list.get(current_id, []):
                 queue.append((neighbor_id, current_distance + 1))
-    
+
     # Fill distances for nodes that weren't reachable
     for node_id in graph.id_to_node:
         if node_id not in rev_distances:
             rev_distances[node_id] = float("inf")
-    
+
     return dict(rev_distances)
+
 
 def check_graph_validity(graph: Graph) -> tuple[bool, str]:
     """Check that the graph is a valid computation graph.
 
-    TODO:
+    Todo:
     * Check that all subgraphs are valid
     * Check that num_inputs to subgraphs agree with the number of incoming edges
     """
-
     # the graph must be weakly connected
     g_nx = graph.get_nx()
     if not nx.is_weakly_connected(g_nx):
@@ -230,7 +230,6 @@ def add_parameter(graph: Graph, mutation_hps: GraphMutHP, tries=DEFAULT_NUM_TRIE
         return graph, False
 
     for _ in range(tries):
-
         graph_cpy = deepcopy(graph)
 
         # create a new node
@@ -387,24 +386,3 @@ def mutate_graph(graph: Graph, mutation_hyperparams: GraphMutHP) -> Graph:
             mutations_performed += 1
 
     return mutated
-
-
-def mutate_graph_hps(hp: GraphMutHP, evolution_config: EvolutionConfig) -> GraphMutHP:
-    new_hp = deepcopy(hp)
-
-    if evolution_config.mutate_num_mutations:
-        new_hp.max_num_mutations = max(hp.max_num_mutations + random.choice([-1, 0, 1]), 1)
-    else:
-        new_hp.max_num_mutations = hp.max_num_mutations
-
-    new_probs = {}
-    for k, v in hp.mutation_probabilities.items():
-        new_probs[k] = v * random.uniform(0.8, 1.2)
-
-    new_hp.mutation_probabilities = new_probs
-
-    new_operator_probs = {}
-    for k, v in hp.operator_probabilities.items():
-        new_operator_probs[k] = v * random.uniform(0.8, 1.2)
-
-    return new_hp

@@ -18,18 +18,12 @@
 # %load_ext autoreload
 # %autoreload 2
 import torch
-from project.graph.graph import CompiledGraph, make_graph, show_graph, SubGraphNode, OperatorNode
+from project.evolution.initialize import random_graph_mut_hps
+from project.graph.graph import CompiledGraph, OperatorNode, SubGraphNode, make_graph, show_graph
+from project.type_defs import EvolutionConfig
 from project.variation_ops.graph_mutation import (
-    expand_edge,
-    add_parameter,
-    add_edge,
-    delete_edge,
-    delete_parameter,
-    delete_operator,
     mutate_graph,
 )
-from project.type_defs import GraphMutHP, EvolutionConfig
-from project.evolution.initialize import random_graph_mut_hps
 
 # %%
 graph_spec = {
@@ -84,10 +78,10 @@ compiled([torch.tensor([1, 2]), torch.tensor([4, 5])])
 ev_config = EvolutionConfig()
 
 # %%
-from project.graph.graph import show_compiled
 
 
 mutated = g
+show_graph(g)
 graph_mut_hps = random_graph_mut_hps(ev_config)
 for _ in range(20):
     try:

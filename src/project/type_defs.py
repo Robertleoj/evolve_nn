@@ -19,3 +19,11 @@ class GraphMutHP:
     max_num_mutations: int
     mutation_probabilities: dict[str, float]
     operator_probabilities: dict[str, float]
+
+
+@dataclass
+class TrainingHP:
+    """Training hyperparameters."""
+
+    lr: float
+    momentum: float
