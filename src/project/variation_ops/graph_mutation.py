@@ -110,7 +110,6 @@ def available_opnodes(graph: Graph, no_single_params: bool = False) -> list[str]
 
         node = graph.id_to_node[node_id]
         
-        print(node)
         assert isinstance(node, OperatorNode)
         lower_bound, upper_bound = node.n_inputs
 
@@ -233,9 +232,13 @@ def delete_edge(graph: Graph, mutation_hps, tries=100) -> tuple[Graph, bool]:
             g_nx.add_edge(node1_id, node2_id)
             continue
 
-        graph = deepcopy(graph)
-        graph.delete_edge(node1_id, node2_id)
-        return graph, True
+        graph_cpy = deepcopy(graph)
+        graph_cpy.delete_edge(node1_id, node2_id)
+        if not check_graph_validity(graph_cpy)[0]:
+            g_nx.add_edge(node1_id, node2_id)
+            continue
+
+        return graph_cpy, True
 
     return graph, False
 
@@ -268,6 +271,9 @@ def delete_parameter(graph: Graph, mutation_hps: GraphMutHP, tries=30) -> tuple[
         graph_copy = deepcopy(graph)
 
         graph_copy.delete_node(random_parameter)
+
+        if not check_graph_validity(graph_copy)[0]:
+            continue
 
         return graph_copy, True
 
@@ -357,9 +363,8 @@ def mutate_graph(graph: Graph, mutation_hyperparams: GraphMutHP) -> Graph:
 
         valid, reason = check_graph_validity(mutated)
         if not valid:
-            print(f"Tried to mutate with {mutation_name}, but graph is invalid: {reason}")
             show_graph(mutated)
-            raise RuntimeError(f"Invalid graph after mutation with {mutation_name}")
+            raise RuntimeError(f"Tried to mutate with {mutation_name}, but graph is invalid: {reason}")
 
         if changed:
             mutations_performed += 1

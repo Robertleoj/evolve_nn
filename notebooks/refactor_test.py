@@ -19,7 +19,7 @@
 # %autoreload 2
 import torch
 from project.graph.graph import CompiledGraph, make_graph, show_graph
-from project.variation_ops.graph_mutation import expand_edge, add_parameter
+from project.variation_ops.graph_mutation import expand_edge, add_parameter, add_edge, delete_edge, delete_parameter, delete_operator, mutate_graph
 from project.type_defs import GraphMutHP, EvolutionConfig
 from project.evolution.initialize import random_graph_mut_hps
 
@@ -62,9 +62,26 @@ compiled([torch.tensor([1, 2]), torch.tensor([4, 5])])
 
 # %%
 ev_config = EvolutionConfig()
-graph_mut_hps = random_graph_mut_hps(ev_config)
 
 # %%
-# mutated, changed = expand_edge(g, graph_mut_hps)
-mutated, changed = add_parameter(g, graph_mut_hps)
+from project.graph.graph import show_compiled
+
+
+mutated = g
+graph_mut_hps = random_graph_mut_hps(ev_config)
+for _ in range(20):
+    try:
+        mutated = mutate_graph(mutated, graph_mut_hps)
+    except Exception as e:
+        show_graph(mutated)
+        print(mutated.rev_adj_list)
+        print(mutated.id_to_node)
+        raise e
+
 show_graph(mutated)
+mut_compiled = CompiledGraph.from_graph(mutated)
+show_compiled(mut_compiled)
+display(mut_compiled([torch.tensor([1.0, 2.0]), torch.tensor([4.0, 5.0])]))
+# mutated, changed = expand_edge(mutated, graph_mut_hps)
+# mutated, changed = add_parameter(mutated, graph_mut_hps)
+# mutated, changed = add_edge(mutated, graph_mut_hps)

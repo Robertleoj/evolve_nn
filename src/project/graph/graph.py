@@ -151,7 +151,6 @@ class ExpNode(OperatorNode):
         return torch.exp(inputs[0])
 
 
-@dataclass
 class Graph:
     """A computational graph.
 
@@ -168,9 +167,34 @@ class Graph:
     ordered_output_nodes: list[str]
     subgraphs: list["Graph"]
 
+    def __init__(
+        self,
+        id_to_node: dict[str, Node],
+        rev_adj_list: dict[str, list[str]],
+        ordered_input_nodes: list[str],
+        ordered_output_nodes: list[str],
+        subgraphs: list["Graph"] = [],
+    ) -> None:
+        """Create a graph.
+
+        Args:
+            nodes: List of nodes in the graph.
+            adj_list: Adjacency list of the graph.
+            rev_adj_list: Reversed adjacency list of the graph.
+        """
+        self.id_to_node = id_to_node
+        self.rev_adj_list = dict(rev_adj_list)
+        for node_id in self.id_to_node.keys():
+            if node_id not in self.rev_adj_list:
+                self.rev_adj_list[node_id] = []
+        self.ordered_input_nodes = ordered_input_nodes
+        self.ordered_output_nodes = ordered_output_nodes
+        self.subgraphs = subgraphs
+
     def add_node(self, node: Node) -> str:
         node_id = str(uuid4())
         self.id_to_node[node_id] = node
+        self.rev_adj_list[node_id] = []
         return node_id
 
     def delete_node(self, node_id) -> str:
@@ -198,6 +222,9 @@ class Graph:
         for node_id, neighbors in self.rev_adj_list.items():
             for neighbor in neighbors:
                 adj_list[neighbor].append(node_id)
+        for node_id in self.id_to_node.keys():
+            if node_id not in adj_list:
+                adj_list[node_id] = []
         return dict(adj_list)
 
     @property
