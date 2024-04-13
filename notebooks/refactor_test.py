@@ -21,7 +21,7 @@ import torch
 from project.evolution.initialize import random_graph_mut_hps, random_individual
 from project.graph.graph import CompiledGraph, OperatorNode, SubGraphNode, make_graph, show_graph
 from project.type_defs import EvolutionConfig
-from project.variation_ops.graph_mutation import mutate_graph
+from project.variation_ops import mutate_graph, mutate_individual, recombine_individuals
 
 # %%
 graph_spec = {
@@ -99,6 +99,27 @@ display(mut_compiled([torch.tensor([1.0, 2.0]), torch.tensor([4.0, 5.0])]))
 # mutated, changed = add_edge(mutated, graph_mut_hps)
 
 # %%
+ind = random_individual(graph_spec, ev_config)
 
+# %%
+ind
 
-random_individual
+# %%
+show_graph(ind.graph)
+
+# %%
+m_ind = mutate_individual(ind, ev_config)
+
+# %%
+show_graph(m_ind.graph)
+
+# %%
+id2 = random_individual(graph_spec, ev_config)
+m_ind2 = mutate_individual(id2, ev_config)
+show_graph(m_ind2.graph)
+
+# %%
+recombined = recombine_individuals(m_ind, m_ind2, ev_config)
+
+# %%
+show_graph(recombined.graph)

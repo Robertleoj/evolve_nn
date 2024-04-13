@@ -4,7 +4,7 @@ from copy import deepcopy
 from project.evolution.individual import Individual
 from project.graph.graph import Graph
 from project.type_defs import EvolutionConfig, GraphMutHP, TrainingHP
-from project.variation_ops.graph_mutation import mutate_graph, mutate_graph_hps
+from project.variation_ops.graph_mutation import mutate_graph
 
 
 def mutate_individual(individual: Individual, evolution_config: EvolutionConfig) -> Individual:
@@ -89,3 +89,16 @@ def recombine_individuals(
     training_hp = recombine_training_hps(individual1.training_hp, individual2.training_hp)
 
     return Individual(graph_mut_hps=graph_mut_hps, graph=graph, training_hp=training_hp)
+
+
+__all__ = [
+    "mutate_individual",
+    "mutate_training_hp",
+    "mutate_graph_hps",
+    "recombine_training_hps",
+    "recombine_graphs",
+    "recombine_graph_hps",
+    "recombine_individuals",
+    "mutate_graph",
+    "mutate_graph_hps",
+]
