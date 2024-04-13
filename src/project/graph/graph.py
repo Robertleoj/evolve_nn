@@ -173,6 +173,41 @@ class Graph:
         self.id_to_node[node_id] = node
         return node_id
 
+    def delete_node(self, node_id) -> str:
+        del self.id_to_node[node_id]
+        for neighbors in self.rev_adj_list.values():
+            while node_id in neighbors:
+                neighbors.remove(node_id)
+        del self.rev_adj_list[node_id]
+
+        return node_id
+
+    def delete_edge(self, from_node_id: str, to_node_id: str) -> None:
+        self.rev_adj_list[to_node_id].remove(from_node_id)
+
+    def add_edge(self, from_node_id: str, to_node_id: str) -> None:
+        self.rev_adj_list[to_node_id].append(from_node_id)
+
+    def add_edges(self, edges: list[tuple[str, str]]) -> None:
+        for from_node_id, to_node_id in edges:
+            self.add_edge(from_node_id, to_node_id)
+
+    @property
+    def adj_list(self) -> dict[str, list[str]]:
+        adj_list = defaultdict(list)
+        for node_id, neighbors in self.rev_adj_list.items():
+            for neighbor in neighbors:
+                adj_list[neighbor].append(node_id)
+        return dict(adj_list)
+
+    @property
+    def edge_list(self) -> list[tuple[str, str]]:
+        edges: list[tuple[str, str]] = []
+        for node_id, neighbors in self.rev_adj_list.items():
+            for neighbor in neighbors:
+                edges.append((neighbor, node_id))
+        return edges
+
     def input_nodes(self) -> list[str]:
         return [node_id for node_id, node in self.id_to_node.items() if isinstance(self.id_to_node[node_id], InputNode)]
 
@@ -206,7 +241,7 @@ class SubGraphNode(OperatorNode):
     def __init__(self, subgraph: Graph) -> None:
         num_inputs = len(subgraph.ordered_input_nodes)
         self.subgraph = subgraph
-        self.num_inputs = (num_inputs, num_inputs)
+        self.n_inputs = (num_inputs, num_inputs)
 
     def get_op(self) -> "CompiledGraph":
         return SubCompiledGraph.from_graph(self.subgraph)
@@ -525,19 +560,19 @@ def show_multiple_graphs(graphs: list[Graph]) -> None:
     display(SVG(svg))
 
 
-op_nodes = [AddNode, ProdNode, GELUNode, ExpNode, SubGraphNode]
+op_nodes: list[OperatorNode] = [AddNode, ProdNode, GELUNode, ExpNode, SubGraphNode]
 
-data_nodes = [
+data_nodes: list[DataNode] = [
     InputNode,
     OutputNode,
     ParameterNode,
 ]
 
-op_node_name_to_node = {node.name: node for node in op_nodes}
+op_node_name_to_node: dict[str, OperatorNode] = {node.name: node for node in op_nodes}
 
-data_node_name_to_node = {node.name: node for node in data_nodes}
+data_node_name_to_node: dict[str, DataNode] = {node.name: node for node in data_nodes}
 
-node_name_to_node = {
+node_name_to_node: dict[str, Node] = {
     **op_node_name_to_node,
     **data_node_name_to_node,
 }

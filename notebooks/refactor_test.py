@@ -19,6 +19,9 @@
 # %autoreload 2
 import torch
 from project.graph.graph import CompiledGraph, make_graph, show_graph
+from project.variation_ops.graph_mutation import expand_edge, add_parameter
+from project.type_defs import GraphMutHP, EvolutionConfig
+from project.evolution.initialize import random_graph_mut_hps
 
 # %%
 graph_spec = {
@@ -56,3 +59,12 @@ compiled = CompiledGraph.from_graph(g)
 
 # %%
 compiled([torch.tensor([1, 2]), torch.tensor([4, 5])])
+
+# %%
+ev_config = EvolutionConfig()
+graph_mut_hps = random_graph_mut_hps(ev_config)
+
+# %%
+# mutated, changed = expand_edge(g, graph_mut_hps)
+mutated, changed = add_parameter(g, graph_mut_hps)
+show_graph(mutated)

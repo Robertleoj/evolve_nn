@@ -12,3 +12,10 @@ class EvolutionConfig:
     num_edges_weight: float = 0.01
     num_parameters_weight: float = 0.01
     softmax_temp: float = 1.0
+
+@dataclass
+class GraphMutHP:
+    max_num_mutations: int
+    mutation_probabilities: dict[str, float]
+    operator_probabilities: dict[str, float]
+
