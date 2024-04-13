@@ -19,7 +19,15 @@
 # %autoreload 2
 import torch
 from project.graph.graph import CompiledGraph, make_graph, show_graph
-from project.variation_ops.graph_mutation import expand_edge, add_parameter, add_edge, delete_edge, delete_parameter, delete_operator, mutate_graph
+from project.variation_ops.graph_mutation import (
+    expand_edge,
+    add_parameter,
+    add_edge,
+    delete_edge,
+    delete_parameter,
+    delete_operator,
+    mutate_graph,
+)
 from project.type_defs import GraphMutHP, EvolutionConfig
 from project.evolution.initialize import random_graph_mut_hps
 

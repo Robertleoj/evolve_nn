@@ -5,7 +5,15 @@ from dataclasses import dataclass
 from typing import Callable
 
 import networkx as nx
-from project.graph.graph import Graph, show_graph, ParameterNode, op_node_name_to_node, OperatorNode, node_name_to_node, Node
+from project.graph.graph import (
+    Graph,
+    show_graph,
+    ParameterNode,
+    op_node_name_to_node,
+    OperatorNode,
+    node_name_to_node,
+    Node,
+)
 from project.type_defs import EvolutionConfig, GraphMutHP
 
 
@@ -58,7 +66,6 @@ def check_graph_validity(graph: Graph) -> tuple[bool, str]:
         if not len(rev_adj_list[node_id]) == 1:
             return False, f"Data node {node_id} does not have exactly one incoming edge"
 
-
     for node_id in graph.operator_nodes():
         # Operator nodes have at least one outgoing edge
         if not len(adj_list[node_id]) > 0:
@@ -75,15 +82,12 @@ def check_graph_validity(graph: Graph) -> tuple[bool, str]:
 
     # 8: Parameter nodes only point to operator nodes
     for node_id in graph.parameter_nodes():
-
         if not len(adj_list[node_id]) > 0:
             return False, f"Parameter node {node_id} does not point to any operator nodes"
 
         for to_node_id in adj_list[node_id]:
             to_node = graph.id_to_node[to_node_id]
-            if not isinstance(
-                to_node, OperatorNode
-            ):
+            if not isinstance(to_node, OperatorNode):
                 return False, f"Parameter node {node_id} points to a non-operator node {to_node_id}"
 
     return True, ""
@@ -109,7 +113,7 @@ def available_opnodes(graph: Graph, no_single_params: bool = False) -> list[str]
                 continue
 
         node = graph.id_to_node[node_id]
-        
+
         assert isinstance(node, OperatorNode)
         lower_bound, upper_bound = node.n_inputs
 
@@ -182,10 +186,7 @@ def add_parameter(graph: Graph, mutation_hps: GraphMutHP) -> tuple[Graph, bool]:
 def add_edge(graph: Graph, mutation_hps, tries: int = 30) -> tuple[Graph, bool]:
     output_nodes = set(graph.output_nodes())
 
-    node_1_candidates = [
-        node_id for node_id in graph.id_to_node 
-        if node_id not in output_nodes
-    ]
+    node_1_candidates = [node_id for node_id in graph.id_to_node if node_id not in output_nodes]
 
     node_2_candidates = available_opnodes(graph)
 
@@ -244,10 +245,7 @@ def delete_edge(graph: Graph, mutation_hps, tries=100) -> tuple[Graph, bool]:
 
 
 def delete_parameter(graph: Graph, mutation_hps: GraphMutHP, tries=30) -> tuple[Graph, bool]:
-    paramnodes: list[str] = [
-        node_id for node_id, node in graph.id_to_node.items()
-        if isinstance(node, ParameterNode)
-    ]
+    paramnodes: list[str] = [node_id for node_id, node in graph.id_to_node.items() if isinstance(node, ParameterNode)]
 
     if len(paramnodes) == 0:
         return graph, False
@@ -346,7 +344,6 @@ graph_mutation_functions: dict[str, Callable[[Graph, GraphMutHP], tuple[Graph, b
 }
 
 
-
 def mutate_graph(graph: Graph, mutation_hyperparams: GraphMutHP) -> Graph:
     mutated = graph
 
@@ -356,7 +353,6 @@ def mutate_graph(graph: Graph, mutation_hyperparams: GraphMutHP) -> Graph:
     mutations_performed = 0
     num_mutations = random.randint(1, max_num_mutations)
     while mutations_performed < num_mutations:
-
         mutation_name = random.choices(names, weights=probs)[0]
         mutation_function = graph_mutation_functions[mutation_name]
         mutated, changed = mutation_function(mutated, mutation_hyperparams)
@@ -391,4 +387,3 @@ def mutate_graph_hps(hp: GraphMutHP, evolution_config: EvolutionConfig) -> Graph
         new_operator_probs[k] = v * random.uniform(0.8, 1.2)
 
     return new_hp
-

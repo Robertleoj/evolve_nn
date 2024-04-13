@@ -27,5 +27,3 @@ def recombine_graph_hps(hp1: GraphMutHP, hp2: GraphMutHP, evolution_config: Evol
 
     new_hp.operator_probabilities = new_op_probs
     return new_hp
-
-

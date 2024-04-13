@@ -21,4 +21,3 @@ def random_graph_mut_hps(evolution_config: EvolutionConfig) -> GraphMutHP:
     return GraphMutHP(
         mutation_probabilities=probs, max_num_mutations=max_num_mutations, operator_probabilities=operator_probabilities
     )
-
