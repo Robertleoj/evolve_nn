@@ -18,12 +18,10 @@
 # %load_ext autoreload
 # %autoreload 2
 import torch
-from project.evolution.initialize import random_graph_mut_hps
+from project.evolution.initialize import random_graph_mut_hps, random_individual
 from project.graph.graph import CompiledGraph, OperatorNode, SubGraphNode, make_graph, show_graph
 from project.type_defs import EvolutionConfig
-from project.variation_ops.graph_mutation import (
-    mutate_graph,
-)
+from project.variation_ops.graph_mutation import mutate_graph
 
 # %%
 graph_spec = {
@@ -99,3 +97,8 @@ display(mut_compiled([torch.tensor([1.0, 2.0]), torch.tensor([4.0, 5.0])]))
 # mutated, changed = expand_edge(mutated, graph_mut_hps)
 # mutated, changed = add_parameter(mutated, graph_mut_hps)
 # mutated, changed = add_edge(mutated, graph_mut_hps)
+
+# %%
+
+
+random_individual
