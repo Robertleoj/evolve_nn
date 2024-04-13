@@ -22,7 +22,7 @@ DEFAULT_NUM_TRIES = 5
 
 
 def get_reverse_lengths(graph: Graph) -> dict:
-    """Using DFS from input nodes, get the number of reverse edges needed to reach each node."""
+    """Using BFS from input nodes, get the number of reverse edges needed to reach each node."""
     # Reverse distances dictionary initialized to infinity
     rev_distances = defaultdict(lambda: float("inf"))
     # Initializing deque with input nodes and distance 0

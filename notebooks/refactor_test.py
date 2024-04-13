@@ -79,7 +79,6 @@ ev_config = EvolutionConfig()
 
 
 mutated = g
-show_graph(g)
 graph_mut_hps = random_graph_mut_hps(ev_config)
 for _ in range(20):
     try:
