@@ -556,12 +556,15 @@ def make_recursive_graph(graph: Graph, dot: Digraph | None = None, show_node_ids
 
     return dot
 
+def get_graph_svg(graph: Graph, show_node_ids: bool = False) -> SVG:
+    dot = make_recursive_graph(graph, show_node_ids=show_node_ids)
+    svg = dot.pipe(format="svg").decode("utf-8")
+
+    return SVG(svg)
 
 def show_graph(graph: Graph, show_node_ids: bool = False) -> None:
     """Show the graph using Graphviz."""
-    dot = make_recursive_graph(graph, show_node_ids=show_node_ids)
-    svg = dot.pipe(format="svg").decode("utf-8")
-    display(SVG(svg))
+    display(get_graph_svg(graph, show_node_ids=show_node_ids))
 
 
 def show_multiple_graphs(graphs: list[Graph]) -> None:

@@ -23,14 +23,18 @@ from itertools import cycle, repeat
 from timeit import default_timer
 
 import matplotlib.pyplot as plt
+from pathlib import Path
 import numpy as np
 import torch
 import torch.multiprocessing as mp
+from uuid import uuid4
+from datetime import datetime
 from einops import rearrange
-from project.graph.graph import CompiledGraph, show_compiled, show_graph, show_multiple_graphs
+from project.graph.graph import CompiledGraph, show_compiled, show_graph, show_multiple_graphs, get_graph_svg
 from project.evolution.initialize import initialize_population
 from project.variation_ops import mutate_individual, recombine_individuals
 from project.type_defs import EvolutionConfig
+from project.utils.paths import get_results_dir
 from tqdm import tqdm
 
 # %%
@@ -223,43 +227,86 @@ def select_and_mutate(population, fitness_scores, evolution_config):
 
     return next_generation, probabilities
 
-
 # %%
-def evolve(population, iterations, evolution_config):
+
+
+def report_data(
+    population, 
+    fitness_scores, 
+    y_hats, 
+    recombination_probs, 
+    folder_path: Path, 
+    generation: int
+) -> None:
+
+    generation_path = folder_path / f"generation_{generation}"
+    generation_path.mkdir(parents=True, exist_ok=True)
+
+    best_score = min(fitness_scores)
+    print(f"Generation {generation}, best score: {best_score}")
+
+    best_score_idx = fitness_scores.index(best_score)
+    y_hats[best_score_idx]
+
+    best_individual = population[best_score_idx]
+    print(best_individual.training_hp)
+    print(best_individual.graph_mut_hps)
+
+    ordered = sorted(zip(fitness_scores, population, y_hats), key=lambda x: x[0])
+    num_to_show = 10
+    ordered_to_show = ordered[:num_to_show]
+    
+
+    _, ind_to_show, y_hats_to_show = zip(*ordered_to_show)
+    svgs = [
+        get_graph_svg(ind.graph)
+        for ind in ind_to_show
+    ]
+
+    graphs_path = generation_path / "graphs"
+    graphs_path.mkdir()
+    for i, (svg, y_hat) in enumerate(zip(svgs, y_hats_to_show)):
+        (graphs_path / f"individual_{i}_graph.svg").write_text(svg.data)
+        fig, ax = plt.subplots()
+        ax.plot(x, y_hat[0], color="green")
+        ax.scatter(x, y)
+        plt.savefig(graphs_path / f"individual_{i}_plot.png")
+        if i == 0:
+            (generation_path / "best_individual_plot.svg").write_text(svg.data)
+            display(svg)
+            plt.savefig(generation_path / "best_individual_plot.png")
+            plt.show()
+        plt.close(fig)
+
+
+    probabilities: list[float] = recombination_probs.tolist()
+    probabilities.sort(reverse=True)
+
+    fig, ax = plt.subplots()
+    ax.bar(range(len(probabilities)), probabilities)
+    plt.savefig(generation_path / "probabilities.png")
+    plt.show()
+    plt.close(fig)
+
+def generate_folder_name() -> str:
+    current_time = datetime.now()
+    folder_name = current_time.strftime("%Y%m%d_%H%M%S")
+    return folder_name
+
+def evolve(population, iterations, evolution_config, path: Path | None = None):
+    if path is None:
+        path = get_results_dir() / generate_folder_name()
+        print(path)
+
     for i in range(iterations):
         fitness_scores, y_hats = evaluate_population(population, evolution_config)
         assert len(fitness_scores) == len(population)
         assert len(y_hats) == len(population)
+        new_population, recombination_probs= select_and_mutate(population, fitness_scores, evolution_config)
 
-        best_score = min(fitness_scores)
-        print(f"Generation {i}, best score: {best_score}")
+        report_data(population, fitness_scores, y_hats, recombination_probs, path, i)
 
-        best_score_idx = fitness_scores.index(best_score)
-        y_hats[best_score_idx]
-
-        best_individual = population[best_score_idx]
-        print(best_individual.training_hp)
-        print(best_individual.graph_mut_hps)
-
-        ordered = sorted(zip(fitness_scores, population, y_hats), key=lambda x: x[0])
-        num_to_show = 3
-        graphs = [ind.graph for _, ind, _ in ordered]
-        show_multiple_graphs(graphs[:num_to_show])
-        show_graph(best_individual.graph)
-
-        y_hats_to_show = [y_hat[0] for _, _, y_hat in ordered]
-        fig, axes = plt.subplots(1, num_to_show, figsize=(10 * num_to_show, 10))
-        for ax, y_hat in zip(axes, y_hats_to_show):
-            ax.plot(x, y_hat, color="green")
-            ax.scatter(x, y)
-        plt.show()
-        plt.close(fig)
-        population, probabilities = select_and_mutate(population, fitness_scores, evolution_config)
-        probabilities: list[float] = probabilities.tolist()
-        probabilities.sort(reverse=True)
-        plt.bar(range(len(probabilities)), probabilities)
-        plt.show()
-        plt.close()
+        population = new_population
 
     # fitness_scores, compiled = evaluate_population(population, num_edges_weight, num_parameters_weight)
     # scores_and_individuals = zip(fitness_scores, population, compiled)
