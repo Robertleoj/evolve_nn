@@ -27,10 +27,9 @@ import numpy as np
 import torch
 import torch.multiprocessing as mp
 from einops import rearrange
-from project.graph_novec.compiled import CompiledGraph, show_compiled
-from project.graph_novec.evolution import initialize_population
-from project.graph_novec.graph import show_graph, show_multiple_graphs
-from project.graph_novec.individual import mutate_individual, recombine_individuals
+from project.graph.graph import CompiledGraph, show_compiled, show_graph, show_multiple_graphs
+from project.evolution.initialize import initialize_population
+from project.variation_ops import mutate_individual, recombine_individuals
 from project.type_defs import EvolutionConfig
 from tqdm import tqdm
 
@@ -41,18 +40,20 @@ evolution_config = EvolutionConfig(
     population_size=1000,
     top_k_stay=3,
     num_epochs_training=1000,
-    num_edges_weight=1e-5,
-    num_parameters_weight=1e-4,
+    num_edges_weight=1e-3,
+    num_parameters_weight=1e-3,
     softmax_temp=0.2,
 )
 
 # %%
 init_spec = {
-    "node_names": [
-        "input",
-        "output",
+    "node_specs": [
+        {"name": "input"},
+        {"name": "output"},
     ],
-    "edge_list": [(0, 1)],
+    "rev_adj_list": [[], [0]],
+    "input_node_order": [0],
+    "output_node_order": [1]
 }
 
 
@@ -241,13 +242,13 @@ def evolve(population, iterations, evolution_config):
         print(best_individual.graph_mut_hps)
 
         ordered = sorted(zip(fitness_scores, population, y_hats), key=lambda x: x[0])
-        num_to_show = 50
+        num_to_show = 3
         graphs = [ind.graph for _, ind, _ in ordered]
         show_multiple_graphs(graphs[:num_to_show])
+        show_graph(best_individual.graph)
 
-        num_plots_to_show = 3
         y_hats_to_show = [y_hat[0] for _, _, y_hat in ordered]
-        fig, axes = plt.subplots(1, num_plots_to_show, figsize=(10 * num_plots_to_show, 10))
+        fig, axes = plt.subplots(1, num_to_show, figsize=(10 * num_to_show, 10))
         for ax, y_hat in zip(axes, y_hats_to_show):
             ax.plot(x, y_hat, color="green")
             ax.scatter(x, y)
@@ -270,11 +271,10 @@ def evolve(population, iterations, evolution_config):
 population = initialize_population(init_spec, evolution_config)
 
 # %%
-ind = population[0]
-g = ind.graph
-show_graph(g)
-comp = CompiledGraph.from_graph(g)
-show_compiled(comp)
+# ind = population[3]
+# g = ind.graph
+for ind in population[:3]:
+    show_graph(ind.graph)
 
 # %%
 evolved = evolve(population, 1000, evolution_config)

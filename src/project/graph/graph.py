@@ -12,7 +12,7 @@ TODO: check that:
 """
 import math
 from collections import defaultdict
-from typing import Any
+from typing import Any, Type
 from uuid import uuid4
 
 import networkx as nx
@@ -276,7 +276,7 @@ class SubGraphNode(OperatorNode):
 
 def make_graph(
     node_specs: list[dict[str, Any]],
-    rev_adj_list: list[tuple[int, int]],
+    rev_adj_list: list[list[int]],
     input_node_order: list[int],
     subgraph_specs: list[dict[str, Any]] | None = None,
     output_node_order: list[int] | None = None,
@@ -590,19 +590,19 @@ def show_multiple_graphs(graphs: list[Graph]) -> None:
     display(SVG(svg))
 
 
-op_nodes: list[OperatorNode] = [AddNode, ProdNode, GELUNode, ExpNode, SubGraphNode]
+op_nodes: list[type[OperatorNode]] = [AddNode, ProdNode, GELUNode, ExpNode, SubGraphNode]
 
-data_nodes: list[DataNode] = [
+data_nodes: list[type[DataNode]] = [
     InputNode,
     OutputNode,
     ParameterNode,
 ]
 
-op_node_name_to_node: dict[str, OperatorNode] = {node.name: node for node in op_nodes}
+op_node_name_to_node: dict[str, type[OperatorNode]] = {node.name: node for node in op_nodes}
 
-data_node_name_to_node: dict[str, DataNode] = {node.name: node for node in data_nodes}
+data_node_name_to_node: dict[str, type[DataNode]] = {node.name: node for node in data_nodes}
 
-node_name_to_node: dict[str, Node] = {
+node_name_to_node: dict[str, type[Node]] = {
     **op_node_name_to_node,
     **data_node_name_to_node,
 }

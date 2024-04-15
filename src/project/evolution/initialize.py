@@ -7,9 +7,11 @@ from project.variation_ops.graph_mutation import graph_mutation_functions, mutat
 
 
 def random_graph_mut_hps(evolution_config: EvolutionConfig) -> GraphMutHP:
-    probs = {}
+    mut_probs = {}
+    sub_mut_probs = {}
     for k in graph_mutation_functions.keys():
-        probs[k] = random.uniform(0, 1)
+        mut_probs[k] = random.uniform(0, 1)
+        sub_mut_probs[k] = random.uniform(0, 1)
 
     if evolution_config.mutate_num_mutations:
         max_num_mutations = random.randint(1, 10)
@@ -17,10 +19,18 @@ def random_graph_mut_hps(evolution_config: EvolutionConfig) -> GraphMutHP:
         assert evolution_config.max_num_mutations is not None
         max_num_mutations = evolution_config.max_num_mutations
 
-    operator_probabilities = {op: random.uniform(0, 1) for op in op_node_name_to_node.keys()}
+    sub_op_probs = {}
+    operator_probabilities = {}
+    for op in op_node_name_to_node.keys():
+        sub_op_probs[op] = random.uniform(0, 1)
+        operator_probabilities[op] = random.uniform(0, 1)
 
     return GraphMutHP(
-        mutation_probabilities=probs, max_num_mutations=max_num_mutations, operator_probabilities=operator_probabilities
+        mutation_probabilities=mut_probs, 
+        subgraph_mutation_probabilities=sub_mut_probs,
+        max_num_mutations=max_num_mutations, 
+        operator_probabilities=operator_probabilities,
+        subgraph_operator_probabilities=sub_op_probs,
     )
 
 

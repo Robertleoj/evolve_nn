@@ -18,7 +18,11 @@ class EvolutionConfig:
 class GraphMutHP:
     max_num_mutations: int
     mutation_probabilities: dict[str, float]
+    subgraph_mutation_probabilities: dict[str, float]
     operator_probabilities: dict[str, float]
+    subgraph_operator_probabilities: dict[str, float]
+    max_subgraph_depth: int = 1
+    max_num_subgraphs: int = 5
 
 
 @dataclass

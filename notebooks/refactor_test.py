@@ -80,6 +80,8 @@ ev_config = EvolutionConfig()
 
 mutated = g
 graph_mut_hps = random_graph_mut_hps(ev_config)
+print(graph_mut_hps.mutation_probabilities)
+
 for _ in range(20):
     try:
         mutated = mutate_graph(mutated, graph_mut_hps)

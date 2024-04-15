@@ -31,15 +31,30 @@ def mutate_graph_hps(hp: GraphMutHP, evolution_config: EvolutionConfig) -> Graph
     else:
         new_hp.max_num_mutations = hp.max_num_mutations
 
-    new_probs = {}
+    new_mut_probs = {}
     for k, v in hp.mutation_probabilities.items():
-        new_probs[k] = v * random.uniform(0.8, 1.2)
+        new_mut_probs[k] = v * random.uniform(0.8, 1.2)
 
-    new_hp.mutation_probabilities = new_probs
+    new_hp.mutation_probabilities = new_mut_probs
+    
+    new_sub_mut_probs = {}
+    for k, v in hp.subgraph_mutation_probabilities.items():
+        new_sub_mut_probs[k] = v * random.uniform(0.8, 1.2)
+
+    new_hp.subgraph_mutation_probabilities = new_sub_mut_probs
+
 
     new_operator_probs = {}
     for k, v in hp.operator_probabilities.items():
         new_operator_probs[k] = v * random.uniform(0.8, 1.2)
+
+    new_hp.operator_probabilities = new_operator_probs
+
+    new_sub_op_probs = {}
+    for k, v in hp.subgraph_operator_probabilities.items():
+        new_sub_op_probs[k] = v * random.uniform(0.8, 1.2)
+
+    new_hp.subgraph_operator_probabilities = new_sub_op_probs
 
     return new_hp
 
