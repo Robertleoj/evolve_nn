@@ -73,9 +73,3 @@ This makes the bindings show up transparently for Python allowing you to write:
 ```python
 from project.foundation import ...
 ```
-
-To confirm that the build and setup was successful, you can run the tests:
-
-```shell-session
-$ py.test
-```
