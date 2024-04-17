@@ -19,22 +19,21 @@
 # %autoreload 2
 import math
 import random
+from datetime import datetime
 from itertools import cycle, repeat
+from pathlib import Path
 from timeit import default_timer
 
 import matplotlib.pyplot as plt
-from pathlib import Path
 import numpy as np
 import torch
 import torch.multiprocessing as mp
-from uuid import uuid4
-from datetime import datetime
 from einops import rearrange
-from project.graph.graph import CompiledGraph, show_compiled, show_graph, show_multiple_graphs, get_graph_svg
 from project.evolution.initialize import initialize_population
-from project.variation_ops import mutate_individual, recombine_individuals
+from project.graph.graph import CompiledGraph, get_graph_svg, show_compiled, show_graph
 from project.type_defs import EvolutionConfig
 from project.utils.paths import get_results_dir
+from project.variation_ops import mutate_individual, recombine_individuals
 from tqdm import tqdm
 
 # %%
@@ -57,7 +56,7 @@ init_spec = {
     ],
     "rev_adj_list": [[], [0]],
     "input_node_order": [0],
-    "output_node_order": [1]
+    "output_node_order": [1],
 }
 
 
@@ -227,18 +226,11 @@ def select_and_mutate(population, fitness_scores, evolution_config):
 
     return next_generation, probabilities
 
+
 # %%
 
 
-def report_data(
-    population, 
-    fitness_scores, 
-    y_hats, 
-    recombination_probs, 
-    folder_path: Path, 
-    generation: int
-) -> None:
-
+def report_data(population, fitness_scores, y_hats, recombination_probs, folder_path: Path, generation: int) -> None:
     generation_path = folder_path / f"generation_{generation}"
     generation_path.mkdir(parents=True, exist_ok=True)
 
@@ -255,13 +247,9 @@ def report_data(
     ordered = sorted(zip(fitness_scores, population, y_hats), key=lambda x: x[0])
     num_to_show = 10
     ordered_to_show = ordered[:num_to_show]
-    
 
     _, ind_to_show, y_hats_to_show = zip(*ordered_to_show)
-    svgs = [
-        get_graph_svg(ind.graph)
-        for ind in ind_to_show
-    ]
+    svgs = [get_graph_svg(ind.graph) for ind in ind_to_show]
 
     graphs_path = generation_path / "graphs"
     graphs_path.mkdir()
@@ -278,7 +266,6 @@ def report_data(
             plt.show()
         plt.close(fig)
 
-
     probabilities: list[float] = recombination_probs.tolist()
     probabilities.sort(reverse=True)
 
@@ -288,10 +275,12 @@ def report_data(
     plt.show()
     plt.close(fig)
 
+
 def generate_folder_name() -> str:
     current_time = datetime.now()
     folder_name = current_time.strftime("%Y%m%d_%H%M%S")
     return folder_name
+
 
 def evolve(population, iterations, evolution_config, path: Path | None = None):
     if path is None:
@@ -302,7 +291,7 @@ def evolve(population, iterations, evolution_config, path: Path | None = None):
         fitness_scores, y_hats = evaluate_population(population, evolution_config)
         assert len(fitness_scores) == len(population)
         assert len(y_hats) == len(population)
-        new_population, recombination_probs= select_and_mutate(population, fitness_scores, evolution_config)
+        new_population, recombination_probs = select_and_mutate(population, fitness_scores, evolution_config)
 
         report_data(population, fitness_scores, y_hats, recombination_probs, path, i)
 

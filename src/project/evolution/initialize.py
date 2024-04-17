@@ -26,9 +26,9 @@ def random_graph_mut_hps(evolution_config: EvolutionConfig) -> GraphMutHP:
         operator_probabilities[op] = random.uniform(0, 1)
 
     return GraphMutHP(
-        mutation_probabilities=mut_probs, 
+        mutation_probabilities=mut_probs,
         subgraph_mutation_probabilities=sub_mut_probs,
-        max_num_mutations=max_num_mutations, 
+        max_num_mutations=max_num_mutations,
         operator_probabilities=operator_probabilities,
         subgraph_operator_probabilities=sub_op_probs,
     )

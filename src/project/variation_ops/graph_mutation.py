@@ -6,20 +6,17 @@ from queue import deque
 from typing import Callable
 
 import networkx as nx
-from networkx import subgraph
-from functools import partial
 
 from project.graph.graph import (
+    AddNode,
     Graph,
     Node,
     OperatorNode,
-    AddNode,
     ParameterNode,
     SubGraphNode,
-    node_name_to_node,
+    make_graph,
     op_node_name_to_node,
     show_graph,
-    make_graph
 )
 from project.type_defs import GraphMutHP
 
@@ -188,8 +185,8 @@ def available_opnodes(graph: Graph, no_single_params: bool = False) -> list[str]
 
     return available_nodes
 
-def choose_op_to_add(graph: Graph, mutation_hps: GraphMutHP, subgraph_depth: int = 0) -> OperatorNode:
 
+def choose_op_to_add(graph: Graph, mutation_hps: GraphMutHP, subgraph_depth: int = 0) -> OperatorNode:
     exclude_ops: list[str] = []
 
     if len(graph.subgraphs) == 0:
@@ -206,14 +203,13 @@ def choose_op_to_add(graph: Graph, mutation_hps: GraphMutHP, subgraph_depth: int
     # select a random operator
     op_name_to_use = random.choices(op_names, weights=op_probs)[0]
 
-
     if op_name_to_use == "graph":
         subgraph = random.choice(graph.subgraphs)
         subgraph_node = SubGraphNode(subgraph)
         return subgraph_node
 
     return op_node_name_to_node[op_name_to_use]()
-   
+
 
 def nodes_that_can_have_outputs(graph: Graph) -> list[str]:
     all_node_ids = set(graph.id_to_node.keys())
@@ -222,7 +218,9 @@ def nodes_that_can_have_outputs(graph: Graph) -> list[str]:
     return list(all_node_ids - output_nodes)
 
 
-def expand_edge(graph: Graph, mutation_hps: GraphMutHP, subgraph_depth: int = 0, tries=DEFAULT_NUM_TRIES) -> tuple[Graph, bool]:
+def expand_edge(
+    graph: Graph, mutation_hps: GraphMutHP, subgraph_depth: int = 0, tries=DEFAULT_NUM_TRIES
+) -> tuple[Graph, bool]:
     for _ in range(tries):
         graph_cpy = deepcopy(graph)
 
@@ -242,7 +240,7 @@ def expand_edge(graph: Graph, mutation_hps: GraphMutHP, subgraph_depth: int = 0,
 
         node_min_num_inputs = new_node.n_inputs[0]
 
-        nx_graph = graph_cpy.get_nx()
+        graph_cpy.get_nx()
 
         node_choices = nodes_that_can_have_outputs(graph_cpy)
         edges_to_add = [(node1, node_id), (node_id, node2)]
@@ -268,7 +266,9 @@ def expand_edge(graph: Graph, mutation_hps: GraphMutHP, subgraph_depth: int = 0,
     return graph, False
 
 
-def add_parameter(graph: Graph, mutation_hps: GraphMutHP, subgraph_depth: int = 0, tries=DEFAULT_NUM_TRIES) -> tuple[Graph, bool]:
+def add_parameter(
+    graph: Graph, mutation_hps: GraphMutHP, subgraph_depth: int = 0, tries=DEFAULT_NUM_TRIES
+) -> tuple[Graph, bool]:
     available_nodes = available_opnodes(graph, no_single_params=True)
 
     if len(available_nodes) == 0:
@@ -335,7 +335,9 @@ def delete_edge(graph: Graph, mutation_hps, subgraph_depth: int = 0, tries=DEFAU
     return graph, False
 
 
-def delete_parameter(graph: Graph, mutation_hps: GraphMutHP, subgraph_depth: int=0, tries=DEFAULT_NUM_TRIES) -> tuple[Graph, bool]:
+def delete_parameter(
+    graph: Graph, mutation_hps: GraphMutHP, subgraph_depth: int = 0, tries=DEFAULT_NUM_TRIES
+) -> tuple[Graph, bool]:
     paramnodes: list[str] = [node_id for node_id, node in graph.id_to_node.items() if isinstance(node, ParameterNode)]
 
     if len(paramnodes) == 0:
@@ -397,19 +399,16 @@ def delete_operator(graph: Graph, mutation_hps, subgraph_depth: int = 0, tries=D
 
     return graph, False
 
+
 def add_subgraph(graph: Graph, mutation_hps: GraphMutHP, subgraph_depth: int = 0) -> tuple[Graph, bool]:
     random_num_inputs = random.randint(1, 5)
 
-    node_specs = [
-        *[{"name": "input"} for _ in range(random_num_inputs)],
-        {"name": "add"},
-        {'name': "output"}
-    ]
+    node_specs = [*[{"name": "input"} for _ in range(random_num_inputs)], {"name": "add"}, {"name": "output"}]
 
-    rev_adj_list : list[list[int]]= [
+    rev_adj_list: list[list[int]] = [
         *[[] for _ in range(random_num_inputs)],
         [i for i in range(random_num_inputs)],
-        [random_num_inputs]
+        [random_num_inputs],
     ]
 
     input_node_order = list(range(random_num_inputs))
@@ -428,6 +427,7 @@ def add_subgraph(graph: Graph, mutation_hps: GraphMutHP, subgraph_depth: int = 0
 
     return graph_copy, True
 
+
 def remove_subgraph(graph: Graph, mutation_hps: GraphMutHP, subgraph_depth: int = 0) -> tuple[Graph, bool]:
     if len(graph.subgraphs) == 0:
         return graph, False
@@ -443,23 +443,18 @@ def remove_subgraph(graph: Graph, mutation_hps: GraphMutHP, subgraph_depth: int 
                     num_nodes[i] += 1
 
     max_count = max(num_nodes)
-    
+
     if max_count == 0:
         subgraph_idx = random.randint(0, len(graph.subgraphs) - 1)
     else:
         subgraph_idx = random.choices(
-            range(len(graph.subgraphs)), 
-            weights=[max_count - count + 10 for count in num_nodes]
+            range(len(graph.subgraphs)), weights=[max_count - count + 10 for count in num_nodes]
         )[0]
 
     subgraph = graph_copy.subgraphs[subgraph_idx]
     subgraph_num_inputs = len(subgraph.input_nodes())
     subgraphs_with_same_num_inputs = [
-        s for s in graph_copy.subgraphs 
-        if (
-            len(s.input_nodes()) == subgraph_num_inputs
-            and s is not subgraph
-        )
+        s for s in graph_copy.subgraphs if (len(s.input_nodes()) == subgraph_num_inputs and s is not subgraph)
     ]
 
     # replace all subgraph nodes with some subgraph with the same number of inputs
@@ -477,8 +472,10 @@ def remove_subgraph(graph: Graph, mutation_hps: GraphMutHP, subgraph_depth: int 
 
     return graph_copy, True
 
-def swap_incoming_edge_source(graph: Graph, mutation_hps: GraphMutHP, subgraph_depth: int = 0, tries: int = DEFAULT_NUM_TRIES) -> tuple[Graph, bool]:
 
+def swap_incoming_edge_source(
+    graph: Graph, mutation_hps: GraphMutHP, subgraph_depth: int = 0, tries: int = DEFAULT_NUM_TRIES
+) -> tuple[Graph, bool]:
     for _ in range(tries):
         graph_copy = deepcopy(graph)
 
@@ -494,11 +491,9 @@ def swap_incoming_edge_source(graph: Graph, mutation_hps: GraphMutHP, subgraph_d
             continue
 
         old_source_to_delete = random.choice(incoming_edges)
-        new_source = random.choice(list(
-            set(graph_copy.id_to_node.keys()) 
-            - set(incoming_edges)
-            - set(graph_copy.output_nodes()
-        )))
+        new_source = random.choice(
+            list(set(graph_copy.id_to_node.keys()) - set(incoming_edges) - set(graph_copy.output_nodes()))
+        )
 
         graph_copy.delete_edge(old_source_to_delete, node_id)
         graph_copy.add_edge(new_source, node_id)
@@ -510,20 +505,23 @@ def swap_incoming_edge_source(graph: Graph, mutation_hps: GraphMutHP, subgraph_d
 
     return graph, False
 
+
 def mutate_graph(graph: Graph, mutation_hyperparams: GraphMutHP, subgraph_depth: int = 0) -> Graph:
     mutated = graph
 
     max_num_mutations = mutation_hyperparams.max_num_mutations
-        
-        
+
     if subgraph_depth > 0:
         mutation_probs = deepcopy(mutation_hyperparams.subgraph_mutation_probabilities)
     else:
         mutation_probs = deepcopy(mutation_hyperparams.mutation_probabilities)
 
     num_subgraphs = len(graph.subgraphs)
-    if subgraph_depth >= mutation_hyperparams.max_subgraph_depth or num_subgraphs >= mutation_hyperparams.max_num_subgraphs:
-        mutation_probs.pop('add_subgraph')
+    if (
+        subgraph_depth >= mutation_hyperparams.max_subgraph_depth
+        or num_subgraphs >= mutation_hyperparams.max_num_subgraphs
+    ):
+        mutation_probs.pop("add_subgraph")
 
     names, probs = zip(*list(mutation_probs.items()))
 
@@ -550,8 +548,8 @@ def mutate_graph(graph: Graph, mutation_hyperparams: GraphMutHP, subgraph_depth:
 
     return mutated
 
-def mutate_subgraph(graph: Graph, mutation_hyperparameters: GraphMutHP, subgraph_depth=0) -> tuple[Graph, bool]:
 
+def mutate_subgraph(graph: Graph, mutation_hyperparameters: GraphMutHP, subgraph_depth=0) -> tuple[Graph, bool]:
     if len(graph.subgraphs) == 0:
         return graph, False
 
@@ -571,6 +569,7 @@ def mutate_subgraph(graph: Graph, mutation_hyperparameters: GraphMutHP, subgraph
 
     return graph_cpy, True
 
+
 graph_mutation_functions: dict[str, Callable[[Graph, GraphMutHP], tuple[Graph, bool]]] = {
     "expand_edge": expand_edge,
     "add_edge": add_edge,
@@ -578,8 +577,8 @@ graph_mutation_functions: dict[str, Callable[[Graph, GraphMutHP], tuple[Graph, b
     "delete_operator": delete_operator,
     "delete_edge": delete_edge,
     "delete_parameter": delete_parameter,
-    'mutate_subgraph': mutate_subgraph,
-    'add_subgraph': add_subgraph,
-    'remove_subgraph': remove_subgraph,
-    'swap_incoming_edge_source': swap_incoming_edge_source
+    "mutate_subgraph": mutate_subgraph,
+    "add_subgraph": add_subgraph,
+    "remove_subgraph": remove_subgraph,
+    "swap_incoming_edge_source": swap_incoming_edge_source,
 }

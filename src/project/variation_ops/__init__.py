@@ -36,13 +36,12 @@ def mutate_graph_hps(hp: GraphMutHP, evolution_config: EvolutionConfig) -> Graph
         new_mut_probs[k] = v * random.uniform(0.8, 1.2)
 
     new_hp.mutation_probabilities = new_mut_probs
-    
+
     new_sub_mut_probs = {}
     for k, v in hp.subgraph_mutation_probabilities.items():
         new_sub_mut_probs[k] = v * random.uniform(0.8, 1.2)
 
     new_hp.subgraph_mutation_probabilities = new_sub_mut_probs
-
 
     new_operator_probs = {}
     for k, v in hp.operator_probabilities.items():
