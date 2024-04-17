@@ -1,16 +1,14 @@
-import numpy as np
-from itertools import cycle
 import random
-from project.variation_ops import recombine_individuals, mutate_individual
+from itertools import cycle
+
+import numpy as np
 from project.evolution.individual import Individual
 from project.type_defs import EvolutionConfig
+from project.variation_ops import mutate_individual, recombine_individuals
 
 
 def select_and_mutate(
-    population: list[Individual], 
-    fitness_scores: list[float], 
-    evolution_config: EvolutionConfig,
-    minimize=True
+    population: list[Individual], fitness_scores: list[float], evolution_config: EvolutionConfig, minimize=True
 ) -> tuple[list[Individual], list[float]]:
     """Select and mutate individuals based on their fitness scores.
 
@@ -19,7 +17,7 @@ def select_and_mutate(
         fitness_scores: List of fitness scores.
         evolution_config: Evolution configuration.
         minimize: Whether to minimize the fitness scores.
-    
+
     Returns:
         new_generation: List of individuals for the next generation.
         probabilities: Selection probabilities.
