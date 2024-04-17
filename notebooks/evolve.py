@@ -155,6 +155,7 @@ def evaluate_population(population, evolution_config):
 
     # Make sure args is iterable of iterables (e.g., list of tuples)
     with mp.Pool(16) as p:
+        # with ThreadPoolExecutor(16) as p:
         out = []
         for result in tqdm(p.imap(train_eval_single_net, args), desc="Evaluating population", total=len(population)):
             out.append(result)
@@ -168,33 +169,6 @@ def evaluate_population(population, evolution_config):
 
 
 # %%
-
-# def select_and_mutate(population, fitness_scores, evolution_config):
-#     # Zip together the population and fitness scores, then sort them by loss
-#     paired_pop = list(zip(population, fitness_scores))
-#     paired_pop.sort(key=lambda x: x[1], reverse=False)  # Sort by fitness score, low to high
-
-#     # Select the top half, excluding the best one since it's already included
-#     top_half = [individual for individual, score in paired_pop[:(len(paired_pop) // 2)]]
-
-#     # Clone and mutate to fill up the next generation, starting with the best individual
-#     # next_generation = [best_individual]  # Start with the best individual unchanged
-#     next_generation = top_half[:evolution_config.top_k_stay] # Start with the best individual unchanged
-
-#     for individual in cycle(top_half):
-#         too_many = False
-#         for _ in range(2):
-#             if len(next_generation) >= len(population):  # Check to not exceed the original size
-#                 too_many = True
-#                 break
-#             other = random.choice(top_half)
-#             recombined = recombine_individuals(individual, other, evolution_config)
-#             rec_mut = mutate_individual(recombined, evolution_config)
-#             next_generation.append(rec_mut)
-#         if too_many:
-#             break
-
-#     return next_generation
 
 
 def select_and_mutate(population, fitness_scores, evolution_config):
