@@ -18,14 +18,12 @@
 # %load_ext autoreload
 # %autoreload 2
 import math
-import random
 from datetime import datetime
-from itertools import cycle, repeat
+from itertools import repeat
 from pathlib import Path
 from timeit import default_timer
 
 import matplotlib.pyplot as plt
-import numpy as np
 import torch
 import torch.multiprocessing as mp
 from einops import rearrange
@@ -33,7 +31,7 @@ from project.evolution.initialize import initialize_population
 from project.graph.graph import CompiledGraph, get_graph_svg, show_compiled, show_graph
 from project.type_defs import EvolutionConfig
 from project.utils.paths import get_results_dir
-from project.variation_ops import mutate_individual, recombine_individuals
+from project.evolution.select_and_mutate import select_and_mutate
 from tqdm import tqdm
 
 # %%
@@ -170,40 +168,6 @@ def evaluate_population(population, evolution_config):
 
 # %%
 
-
-def select_and_mutate(population, fitness_scores, evolution_config):
-    # Apply softmax to negative fitness scores directly to favor individuals with lower scores
-    # normalize the fitness scores between 0 and 1
-
-    softmax_temp = evolution_config.softmax_temp
-    exp_scores = np.exp(-np.array(fitness_scores) / softmax_temp)  # Exponentiate the negative fitness scores
-    probabilities = exp_scores / np.sum(exp_scores)  # Softmax probabilities
-
-    # Use softmax probabilities to perform weighted selection
-    selected_indices = random.choices(range(len(population)), weights=probabilities, k=len(population) // 2)
-    selected_population = [population[i] for i in selected_indices]
-
-    sorted_by_score = sorted(list(zip(population, fitness_scores)), key=lambda x: x[1])
-    next_generation = [individual for individual, score in sorted_by_score[: evolution_config.top_k_stay]]
-
-    # Clone and mutate to fill up the next generation
-    for individual in cycle(selected_population):
-        if len(next_generation) >= len(population):
-            break
-        for _ in range(2):  # Assume each selected individual can produce two offspring
-            if len(next_generation) >= len(population):
-                break
-            other = random.choice(selected_population)
-            recombined = recombine_individuals(individual, other, evolution_config)
-            mutated_offspring = mutate_individual(recombined, evolution_config)
-            next_generation.append(mutated_offspring)
-
-    return next_generation, probabilities
-
-
-# %%
-
-
 def report_data(population, fitness_scores, y_hats, recombination_probs, folder_path: Path, generation: int) -> None:
     generation_path = folder_path / f"generation_{generation}"
     generation_path.mkdir(parents=True, exist_ok=True)
@@ -271,35 +235,10 @@ def evolve(population, iterations, evolution_config, path: Path | None = None):
 
         population = new_population
 
-    # fitness_scores, compiled = evaluate_population(population, num_edges_weight, num_parameters_weight)
-    # scores_and_individuals = zip(fitness_scores, population, compiled)
-    # scores_and_individuals = sorted(scores_and_individuals, key=lambda x: x[0], reverse=False)
-    # return scores_and_individuals
-
 
 # %%
 population = initialize_population(init_spec, evolution_config)
 
 # %%
-# ind = population[3]
-# g = ind.graph
-for ind in population[:3]:
-    show_graph(ind.graph)
-
-# %%
 evolved = evolve(population, 1000, evolution_config)
 population = [individual for _, individual, _ in evolved]
-
-# %%
-best_score, best_evolved, best_compiled = evolved[0]
-best_score
-
-# %%
-graph.show_graph(best_evolved)
-
-# %%
-with torch.no_grad():
-    y_hat = best_compiled([x])[0]
-
-plt.plot(x, y_hat, color="green")
-plt.scatter(x, y)
