@@ -2,7 +2,6 @@
 from dataclasses import dataclass
 
 
-
 @dataclass
 class EvolutionConfig:
     mutate_num_mutations: bool = True
@@ -14,3 +13,21 @@ class EvolutionConfig:
     num_parameters_weight: float = 0.01
     softmax_temp: float = 1.0
 
+
+@dataclass
+class GraphMutHP:
+    max_num_mutations: int
+    mutation_probabilities: dict[str, float]
+    subgraph_mutation_probabilities: dict[str, float]
+    operator_probabilities: dict[str, float]
+    subgraph_operator_probabilities: dict[str, float]
+    max_subgraph_depth: int = 1
+    max_num_subgraphs: int = 5
+
+
+@dataclass
+class TrainingHP:
+    """Training hyperparameters."""
+
+    lr: float
+    momentum: float

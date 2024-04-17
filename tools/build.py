@@ -14,7 +14,6 @@ BUILD_DIR = "build"
 MODULE_NAME = "foundation.cpython-310-x86_64-linux-gnu.so"
 
 
-
 def check_in_repo() -> None:
     """Check that we are executing this from repo root."""
     assert Path(".git").exists(), "This command should run in repo root."
