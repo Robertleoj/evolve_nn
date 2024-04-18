@@ -3,8 +3,8 @@ from __future__ import annotations
 import math
 from typing import Any
 
-import project.graph.graph as graph_
 import project.graph.compiled as compiled_
+import project.graph.graph as graph_
 import torch
 import torch.nn as nn
 

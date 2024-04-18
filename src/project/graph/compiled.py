@@ -1,12 +1,15 @@
 from __future__ import annotations
+
+import math
+
+import project.graph.graph as graph_
 import project.graph.nodes as nodes_
+import project.utils.graph_utils as graph_utils_
 import torch
 import torch.nn as nn
-import project.utils.graph_utils as graph_utils_
 from graphviz import Digraph
-from IPython.display import display, SVG
-import project.graph.graph as graph_
-import math
+from IPython.display import SVG, display
+
 
 class CompiledGraph(nn.Module):
     """Compiled graph for inference and training.
@@ -187,6 +190,7 @@ class CompiledGraph(nn.Module):
             op = self.stored_modules[str(node_id)]
             self.curr_data[node_id] = op(input_data)
 
+
 def show_compiled(graph: CompiledGraph) -> None:
     """Show the graph using Graphviz."""
     dot = Digraph()
@@ -208,8 +212,8 @@ def show_compiled(graph: CompiledGraph) -> None:
     svg = dot.pipe(format="svg").decode("utf-8")
     display(SVG(svg))
 
+
 class SubCompiledGraph(CompiledGraph):
     def forward(self, inputs: list[torch.Tensor]) -> torch.Tensor:  # type: ignore
         outputs = super().forward(inputs)
         return outputs[0]
-

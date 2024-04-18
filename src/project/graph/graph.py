@@ -14,11 +14,11 @@ from __future__ import annotations
 
 from collections import defaultdict
 from typing import Any
-from graphviz import Digraph
 from uuid import uuid4
 
 import networkx as nx
 import project.graph.nodes as nodes_
+from graphviz import Digraph
 from IPython.display import SVG, display
 
 
@@ -196,8 +196,6 @@ def make_graph(
         ordered_output_nodes=output_node_id_order,
         subgraphs=subgraphs,
     )
-
-
 
 
 def make_recursive_graph(graph: Graph, dot: Digraph | None = None, show_node_ids: bool = False) -> Digraph:
