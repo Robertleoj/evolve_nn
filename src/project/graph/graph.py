@@ -39,6 +39,7 @@ class InputNode(DataNode):
 
     name = "input"
 
+
 class ResponseInputNode(DataNode):
     """A node that represents response input data."""
 
@@ -50,10 +51,12 @@ class OutputNode(DataNode):
 
     name = "output"
 
+
 class LossOutputNode(DataNode):
     """A node that represents the loss output data."""
 
     name = "loss_output"
+
 
 class ParameterNode(DataNode):
     """A node that represents a learnable parameter."""
@@ -158,6 +161,7 @@ class ExpNode(OperatorNode):
         """Perform the exp operation."""
         return ExpMod()
 
+
 class Graph:
     """A computational graph.
 
@@ -178,13 +182,14 @@ class Graph:
     loss_output_node: str | None
 
     def __init__(
-        self, *,
+        self,
+        *,
         id_to_node: dict[str, Node],
         rev_adj_list: dict[str, list[str]],
         ordered_input_nodes: list[str],
         ordered_output_nodes: list[str],
         subgraphs: list["Graph"] = [],
-        ordered_respoone_input_nodes: list[str] = None
+        ordered_respoone_input_nodes: list[str] = None,
     ) -> None:
         """Create a graph.
 
@@ -339,6 +344,7 @@ def make_graph(
         ordered_output_nodes=output_node_id_order,
         subgraphs=subgraphs,
     )
+
 
 class CompiledGraph(nn.Module):
     """Compiled graph for inference and training.
