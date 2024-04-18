@@ -275,7 +275,7 @@ def expand_edge(
             g_nx.add_edge(random_input_node, node_id)
             if not nx.is_directed_acyclic_graph(g_nx):
                 g_nx.remove_edge(random_input_node, node_id)
-                break
+                continue
             graph_cpy.add_edge(random_input_node, node_id)
             curr_num_inputs += 1
 

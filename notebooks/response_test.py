@@ -39,7 +39,7 @@ from tqdm import tqdm
 # %%
 evolution_config = EvolutionConfig(
     mutate_num_mutations=False,
-    max_num_mutations=10,
+    max_num_mutations=3,
     population_size=1000,
     top_k_stay=3,
     num_epochs_training=1000,
@@ -148,8 +148,8 @@ def train_eval_single_net(args) -> float:
 # %%
 
 
-def replace_invalid_with_high(values, high_value=100):
-    return [high_value if math.isinf(x) or math.isnan(x) else x for x in values]
+def replace_invalid_with_high(values, high_value=5):
+    return [high_value if math.isinf(x) or math.isnan(x) else min(x, high_value) for x in values]
 
 
 def evaluate_population(population, evolution_config):
