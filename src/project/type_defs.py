@@ -12,6 +12,8 @@ class EvolutionConfig:
     num_edges_weight: float = 0.01
     num_parameters_weight: float = 0.01
     softmax_temp: float = 1.0
+    max_subgraph_depth: int = 1
+    max_num_subgraphs: int = 5
 
 
 @dataclass

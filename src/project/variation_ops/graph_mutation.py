@@ -9,6 +9,8 @@ import networkx as nx
 
 import project.graph.graph as graph_
 import project.graph.nodes as nodes_
+from project.utils.rand_utils import weighted_random
+from project.utils.graph_utils import are_all_reachable
 from project.type_defs import GraphMutHP
 
 DEFAULT_NUM_TRIES = 5
@@ -20,8 +22,10 @@ def get_reverse_lengths(graph: graph_.Graph) -> dict:
     """Using BFS from input nodes, get the number of reverse edges needed to reach each node."""
     # Reverse distances dictionary initialized to infinity
     rev_distances: defaultdict[str, float] = defaultdict(lambda: float("inf"))
+
     # Initializing deque with input nodes and distance 0
-    queue = deque([(node_id, 0) for node_id in graph.input_nodes()])
+    start_nodes = graph.input_nodes() + graph.response_nodes()
+    queue = deque([(node_id, 0) for node_id in start_nodes])
 
     while queue:
         current_id, current_distance = queue.popleft()
@@ -84,9 +88,10 @@ def check_graph_validity(graph: graph_.Graph) -> tuple[bool, str]:
         return False, "Graph has no output nodes"
 
     for node_id in output_nodes:
-        # output nodes must have no outgoing edges
-        if not len(adj_list[node_id]) == 0:
-            return False, f"Output node {node_id} has outgoing edges"
+        if graph.is_subgraph:
+            # output nodes must have no outgoing edges
+            if not len(adj_list[node_id]) == 0:
+                return False, f"Output node {node_id} has outgoing edges"
 
         # output nodes must have exactly one incoming edge
         if not len(rev_adj_list[node_id]) == 1:
@@ -132,6 +137,28 @@ def check_graph_validity(graph: graph_.Graph) -> tuple[bool, str]:
 
         if len(has_only_single_output) > 1:
             return False, f"Operator node {node_id} has multiple parameters with only one output"
+
+    # all output nodes must be reachable from some input node
+    if not are_all_reachable(g_nx, set(input_nodes), set(output_nodes)):
+        return False, "Not all output nodes are reachable from input nodes"
+
+    if not graph.is_subgraph:
+        # response nodes cannot have paths to the output
+        for node_id in graph.response_nodes():
+            for output_node in graph.output_nodes():
+                if nx.has_path(g_nx, node_id, output_node):
+                    return False, f"Response node {node_id} has a path to the output"
+
+        # loss output cannot have outputs
+        if graph.loss_output_node is not None:
+            loss_out = graph.loss_output_node
+            assert loss_out is not None
+
+            # all parameter and subgraph nodes must have paths to the loss node, if exists
+            for node_id in (graph.parameter_nodes() + graph.subgraph_nodes()):
+                if not nx.has_path(g_nx, node_id, loss_out):
+                    return False, f"Parameter node {node_id} has no path to loss output node"
+
 
     # no more than 1 reverse distance from input nodes
     rev_distances = get_reverse_lengths(graph)
@@ -186,7 +213,7 @@ def choose_op_to_add(graph: graph_.Graph, mutation_hps: GraphMutHP, subgraph_dep
         exclude_ops.append("graph")
 
     op_names = [op for op in nodes_.op_node_name_to_node.keys() if op not in exclude_ops]
-    if subgraph_depth > 0:
+    if graph.is_subgraph:
         op_prob_dict = mutation_hps.subgraph_operator_probabilities
     else:
         op_prob_dict = mutation_hps.operator_probabilities
@@ -205,10 +232,11 @@ def choose_op_to_add(graph: graph_.Graph, mutation_hps: GraphMutHP, subgraph_dep
 
 
 def nodes_that_can_have_outputs(graph: graph_.Graph) -> list[str]:
-    all_node_ids = set(graph.id_to_node.keys())
-    output_nodes = set(graph.output_nodes())
+    candidates = set(graph.id_to_node.keys())
+    if graph.is_subgraph:
+        candidates -= set(graph.output_nodes())
 
-    return list(all_node_ids - output_nodes)
+    return list(candidates)
 
 
 def expand_edge(
@@ -290,10 +318,8 @@ def add_parameter(
 def add_edge(
     graph: graph_.Graph, mutation_hps, subgraph_depth: int = 0, tries: int = DEFAULT_NUM_TRIES
 ) -> tuple[graph_.Graph, bool]:
-    output_nodes = set(graph.output_nodes())
 
-    node_1_candidates = [node_id for node_id in graph.id_to_node if node_id not in output_nodes]
-
+    node_1_candidates = nodes_that_can_have_outputs(graph)
     node_2_candidates = available_opnodes(graph)
 
     if len(node_1_candidates) == 0 or len(node_2_candidates) == 0:
@@ -402,7 +428,7 @@ def delete_operator(
 
 
 def add_subgraph(graph: graph_.Graph, mutation_hps: GraphMutHP, subgraph_depth: int = 0) -> tuple[graph_.Graph, bool]:
-    random_num_inputs = random.randint(1, 5)
+    random_num_inputs = random.randint(2, 5)
 
     node_specs = [*[{"name": "input"} for _ in range(random_num_inputs)], {"name": "add"}, {"name": "output"}]
 
@@ -418,6 +444,7 @@ def add_subgraph(graph: graph_.Graph, mutation_hps: GraphMutHP, subgraph_depth: 
         node_specs=node_specs,
         rev_adj_list=rev_adj_list,
         input_node_order=input_node_order,
+        is_subgraph=True
     )
 
     subgraph = mutate_graph(subgraph, mutation_hps, subgraph_depth=subgraph_depth + 1)
@@ -435,43 +462,26 @@ def remove_subgraph(
     if len(graph.subgraphs) == 0:
         return graph, False
 
+
     graph_copy = deepcopy(graph)
 
-    # randomly select the subgraph according to how many nodes it has
-    num_nodes = [0 for _ in range(len(graph.subgraphs))]
+    # only remove subgraphs that do not appear in the graph
+    subgraphs_to_delete = graph_copy.subgraphs
     for node in graph_copy.id_to_node.values():
         if isinstance(node, nodes_.SubGraphNode):
-            for i, subgraph in enumerate(graph_copy.subgraphs):
-                if node.subgraph is subgraph:
-                    num_nodes[i] += 1
+            subgraphs_to_delete = [
+                s for s in subgraphs_to_delete if s is not node.subgraph
+            ]
 
-    max_count = max(num_nodes)
+    if len(subgraphs_to_delete) == 0:
+        return graph, False
 
-    if max_count == 0:
-        subgraph_idx = random.randint(0, len(graph.subgraphs) - 1)
-    else:
-        subgraph_idx = random.choices(
-            range(len(graph.subgraphs)), weights=[max_count - count + 10 for count in num_nodes]
-        )[0]
 
-    subgraph = graph_copy.subgraphs[subgraph_idx]
-    subgraph_num_inputs = len(subgraph.input_nodes())
-    subgraphs_with_same_num_inputs = [
-        s for s in graph_copy.subgraphs if (len(s.input_nodes()) == subgraph_num_inputs and s is not subgraph)
-    ]
+    # choose the subgraph randomly
+    subgraph_idx = random.randint(0, len(subgraphs_to_delete) - 1)
+    subgraph_to_delete = subgraphs_to_delete[subgraph_idx]
 
-    # replace all subgraph nodes with some subgraph with the same number of inputs
-    for node_id, node in graph_copy.id_to_node.items():
-        if isinstance(node, nodes_.SubGraphNode) and node.subgraph is subgraph:
-            if len(subgraphs_with_same_num_inputs) == 0:
-                graph_copy.id_to_node[node_id] = nodes_.AddNode()
-                continue
-
-            new_subgraph = random.choice(subgraphs_with_same_num_inputs)
-            graph_copy.id_to_node[node_id] = nodes_.SubGraphNode(new_subgraph)
-
-    # remove the subgraph
-    graph_copy.subgraphs.pop(subgraph_idx)
+    graph_copy.subgraphs = [s for s in graph_copy.subgraphs if s is not subgraph_to_delete]
 
     return graph_copy, True
 
@@ -494,9 +504,11 @@ def swap_incoming_edge_source(
             continue
 
         old_source_to_delete = random.choice(incoming_edges)
-        new_source = random.choice(
-            list(set(graph_copy.id_to_node.keys()) - set(incoming_edges) - set(graph_copy.output_nodes()))
-        )
+        candidate_sources = set(graph_copy.id_to_node.keys()) - set(incoming_edges)
+        if graph_copy.is_subgraph:
+            candidate_sources -= set(graph_copy.output_nodes())
+
+        new_source = random.choice(list(candidate_sources))
 
         graph_copy.delete_edge(old_source_to_delete, node_id)
         graph_copy.add_edge(new_source, node_id)
@@ -514,7 +526,7 @@ def mutate_graph(graph: graph_.Graph, mutation_hyperparams: GraphMutHP, subgraph
 
     max_num_mutations = mutation_hyperparams.max_num_mutations
 
-    if subgraph_depth > 0:
+    if graph.is_subgraph:
         mutation_probs = deepcopy(mutation_hyperparams.subgraph_mutation_probabilities)
     else:
         mutation_probs = deepcopy(mutation_hyperparams.mutation_probabilities)
@@ -529,17 +541,16 @@ def mutate_graph(graph: graph_.Graph, mutation_hyperparams: GraphMutHP, subgraph
     names, probs = zip(*list(mutation_probs.items()))
 
     mutations_performed = 0
-    if subgraph_depth > 0:
+    if graph.is_subgraph:
         num_mutations = 1
     else:
-        num_mutations = random.randint(1, max_num_mutations)
+        num_mutations = weighted_random(1, max_num_mutations)
 
     while mutations_performed < num_mutations:
         mutation_name = random.choices(names, weights=probs)[0]
         mutation_function = graph_mutation_functions[mutation_name]
 
         mutated, changed = mutation_function(mutated, mutation_hyperparams, subgraph_depth)
-
         valid, reason = check_graph_validity(mutated)
         if not valid:
             graph_.show_graph(mutated, show_node_ids=True)

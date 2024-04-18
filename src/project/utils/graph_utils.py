@@ -44,3 +44,11 @@ def reverse_adjacency_list(adj_list: list[list[int]]) -> list[list[int]]:
         for j in neighbors:
             rev_adj_list[j].append(i)
     return rev_adj_list
+
+
+def are_all_reachable(G: nx.DiGraph, A: set[str], B: set[str]) -> bool:
+    reachable_from_A = set()
+    for start_node in A:
+        reachable_from_A.update(nx.descendants(G, start_node))
+    
+    return B.issubset(reachable_from_A)

@@ -40,6 +40,7 @@ class Graph:
     is_subgraph: bool = False
     ordered_respone_input_nodes: list[str] | None
     loss_output_node: str | None
+    is_subgraph: bool = False
 
     def __init__(
         self,
@@ -49,7 +50,8 @@ class Graph:
         ordered_input_nodes: list[str],
         ordered_output_nodes: list[str],
         subgraphs: list["Graph"] = [],
-        ordered_respoone_input_nodes: list[str] | None = None,
+        ordered_response_input_nodes: list[str] | None = None,
+        is_subgraph: bool = False
     ) -> None:
         """Create a graph.
 
@@ -58,18 +60,24 @@ class Graph:
             adj_list: Adjacency list of the graph.
             rev_adj_list: Reversed adjacency list of the graph.
         """
+        self.is_subgraph = is_subgraph
+
+        if self.is_subgraph:
+            assert ordered_response_input_nodes is None, "Subgraphs cannot have response input nodes."
+
         self.id_to_node = id_to_node
         self.rev_adj_list = dict(rev_adj_list)
 
         self.loss_output_node = None
         for node_id, node in self.id_to_node.items():
             if isinstance(node, nodes_.LossOutputNode):
+                assert not self.is_subgraph, "Subgraphs cannot have loss output nodes."
                 self.loss_output_node = node_id
             if node_id not in self.rev_adj_list:
                 self.rev_adj_list[node_id] = []
         self.ordered_input_nodes = ordered_input_nodes
         self.ordered_output_nodes = ordered_output_nodes
-        self.ordered_response_input_nodes = ordered_respoone_input_nodes
+        self.ordered_response_input_nodes = ordered_response_input_nodes
         self.subgraphs = subgraphs
 
     def add_node(self, node: nodes_.Node) -> str:
@@ -136,6 +144,16 @@ class Graph:
     def data_nodes(self) -> list[str]:
         return [node_id for node_id, node in self.id_to_node.items() if isinstance(node, nodes_.DataNode)]
 
+    def subgraph_nodes(self) -> list[str]:
+        return [node_id for node_id, node in self.id_to_node.items() if isinstance(node, nodes_.SubGraphNode)]
+
+    def response_nodes(self) -> list[str]:
+        return [
+            node_id
+            for node_id, node in self.id_to_node.items()
+            if isinstance(self.id_to_node[node_id], nodes_.ResponseInputNode)
+        ]
+
     def get_nx(self) -> nx.DiGraph:
         graph = nx.DiGraph()
         graph.add_nodes_from(self.id_to_node.keys())
@@ -151,11 +169,13 @@ def make_graph(
     input_node_order: list[int],
     subgraph_specs: list[dict[str, Any]] | None = None,
     output_node_order: list[int] | None = None,
+    response_input_node_order: list[int] | None = None,
+    is_subgraph: bool = False
 ) -> Graph:
     subgraphs = []
     if subgraph_specs is not None:
         for spec in subgraph_specs:
-            subgraphs.append(make_graph(**spec))
+            subgraphs.append(make_graph(**spec, is_subgraph=True))
 
     nodes: list[nodes_.Node] = []
     node: nodes_.Node
@@ -188,13 +208,19 @@ def make_graph(
         output_node_order = [first_output_node]
 
     output_node_id_order = [node_ids[i] for i in output_node_order]
+    response_node_id_order = None
+    if response_input_node_order is not None:
+        response_node_id_order = [node_ids[i] for i in response_input_node_order]
+
 
     return Graph(
         id_to_node=dict(zip(node_ids, nodes)),
         rev_adj_list=id_rev_adj_list,
         ordered_input_nodes=input_node_id_order,
         ordered_output_nodes=output_node_id_order,
+        ordered_response_input_nodes=response_node_id_order,
         subgraphs=subgraphs,
+        is_subgraph=is_subgraph,
     )
 
 

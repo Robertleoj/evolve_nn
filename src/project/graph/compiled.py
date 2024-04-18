@@ -1,6 +1,7 @@
 from __future__ import annotations
 
 import math
+import traceback
 
 import project.graph.graph as graph_
 import project.graph.nodes as nodes_
@@ -27,14 +28,19 @@ class CompiledGraph(nn.Module):
     rev_adjacency_list: list[list[int]]
     input_nodes: list[int]
     output_nodes: list[int]
+    response_input_nodes: list[int]
+    loss_output_node: int
     stored_modules: nn.ModuleDict
     stored_parameters: nn.ParameterDict
-    curr_data: list[None | torch.Tensor]
+    curr_data: list[None | torch.Tensor] | None
+    is_subgraph: bool = False
+    graph: graph_.Graph
 
     def __init__(
         self,
         nodes: list[nodes_.Node],
         rev_adjacency_list: list[list[int]],
+        parent_graph: graph_.Graph
     ) -> None:
         """Create a compiled graph.
 
@@ -47,6 +53,8 @@ class CompiledGraph(nn.Module):
             edge_indices: Dictionary mapping edges to their index in the input/output list.
         """
         super().__init__()
+        self.graph = parent_graph
+
         edge_list = []
         for to_idx, from_indices in enumerate(rev_adjacency_list):
             for from_idx in from_indices:
@@ -74,6 +82,7 @@ class CompiledGraph(nn.Module):
         self.stored_parameters = nn.ParameterDict()
         self.input_nodes = []
         self.output_nodes = []
+        self.response_input_nodes = []
         for node_id, node in enumerate(self.nodes):
             if isinstance(node, nodes_.OperatorNode):
                 self.stored_modules[str(node_id)] = node.get_op()
@@ -87,17 +96,26 @@ class CompiledGraph(nn.Module):
             if isinstance(node, nodes_.OutputNode):
                 self.output_nodes.append(node_id)
 
+            if isinstance(node, nodes_.ResponseInputNode):
+                self.response_input_nodes.append(node_id)
+
+            if isinstance(node, nodes_.LossOutputNode):
+                self.loss_output_node = node_id
+
         self.reset_parameters()
-        self.reset_data()
+        self.nuke_data()
 
     def reset_parameters(self) -> None:
         """Reset the parameters of the graph."""
         for param in self.stored_parameters.values():
             nn.init.normal_(param, mean=0, std=1 / math.sqrt(2))
 
-    def reset_data(self) -> None:
+    def nuke_data(self) -> None:
         """Reset the data of the graph."""
-        self.curr_data = [None for _ in self.nodes]
+        self.curr_data = None
+
+    def init_data(self) -> None:
+        self.curr_data = [None for _ in range(len(self.nodes))]
 
     @classmethod
     def from_graph(cls, graph: graph_.Graph) -> "CompiledGraph":
@@ -127,6 +145,7 @@ class CompiledGraph(nn.Module):
         return cls(
             nodes=nodes,
             rev_adjacency_list=idx_rev_edge_list,
+            parent_graph=graph
         )
 
     def forward(self, inputs: list[torch.Tensor]) -> list[torch.Tensor]:
@@ -138,27 +157,33 @@ class CompiledGraph(nn.Module):
         Returns:
             List of output tensors.
         """
-        self.reset_data()
+        try:
+            self.init_data()
+            assert self.curr_data is not None
 
-        for node_id, input in zip(self.input_nodes, inputs):
-            self.curr_data[node_id] = input
+            for node_id, input in zip(self.input_nodes, inputs):
+                self.curr_data[node_id] = input
 
-        for str_node_id, param in self.stored_parameters.items():
-            self.curr_data[int(str_node_id)] = param
+            for str_node_id, param in self.stored_parameters.items():
+                self.curr_data[int(str_node_id)] = param
 
-        for node_id, node in enumerate(self.nodes):
-            if isinstance(node, nodes_.ResponseInputNode | nodes_.LossOutputNode):
-                break
+            for node_id, node in enumerate(self.nodes):
+                if isinstance(node, nodes_.ResponseInputNode | nodes_.LossOutputNode):
+                    continue
 
-            self.infer_node(node_id)
+                self.infer_node(node_id)
 
-        output: list[torch.Tensor] = []
-        for node_id in self.output_nodes:
-            data = self.curr_data[node_id]
-            assert data is not None, f"Output node {node_id} has not been inferred."
+            output: list[torch.Tensor] = []
+            for node_id in self.output_nodes:
+                data = self.curr_data[node_id]
+                assert data is not None, f"Output node {node_id} has not been inferred."
 
-            output.append(data)
-        return output
+                output.append(data)
+            return output
+        except Exception as e:
+            show_compiled(self)
+            raise e
+            
 
     def infer_node(self, node_id: int) -> None:
         """Infer the value of a node.
@@ -167,32 +192,62 @@ class CompiledGraph(nn.Module):
             node_idx: Index of the node.
             data: List of tensors for each node.
         """
+        assert self.curr_data is not None
+
         node = self.nodes[node_id]
 
         if self.curr_data[node_id] is not None:
             return
 
-        if isinstance(node, nodes_.OutputNode):
+        if isinstance(node, nodes_.DataNode):
             input_node_ids = self.rev_adjacency_list[node_id]
 
             assert len(input_node_ids) == 1, "Output nodes should only have one incoming edge."
             input_node_id = input_node_ids[0]
-            self.curr_data[node_id] = self.curr_data[input_node_id]
+            inp = self.curr_data[input_node_id]
+
+            if inp is not None:
+                self.curr_data[node_id] = inp
+
             return
 
         if isinstance(node, nodes_.OperatorNode):
             input_data = []
             for i in self.rev_adjacency_list[node_id]:
                 inp_data = self.curr_data[i]
-                assert inp_data is not None, f"Inferring node {node_id}: node {i} has not been inferred yet."
+                if inp_data is None:
+                    return
+
                 input_data.append(inp_data)
 
             op = self.stored_modules[str(node_id)]
             self.curr_data[node_id] = op(input_data)
 
+    def response_forward(self, inputs: list[torch.Tensor]) -> torch.Tensor:
+        assert not self.is_subgraph, "response_forward should only be called on the top-level graph."
+        assert self.curr_data is not None, "Data has not been initialized."
+        
+        for node_id, input in zip(self.response_input_nodes, inputs):
+            self.curr_data[node_id] = input
 
-def show_compiled(graph: CompiledGraph) -> None:
+        for node_id, node in enumerate(self.nodes):
+            self.infer_node(node_id)
+
+
+        output = self.curr_data[self.loss_output_node]
+        assert output is not None, "Loss output node has not been inferred."
+
+        self.nuke_data()
+
+        return output
+
+
+def show_compiled(graph: CompiledGraph, use_regular: bool = True) -> None:
     """Show the graph using Graphviz."""
+    if use_regular:
+        graph_.show_graph(graph.graph)
+        return
+
     dot = Digraph()
 
     for node_idx, node in enumerate(graph.nodes):
@@ -214,6 +269,7 @@ def show_compiled(graph: CompiledGraph) -> None:
 
 
 class SubCompiledGraph(CompiledGraph):
+    is_subgraph = True
     def forward(self, inputs: list[torch.Tensor]) -> torch.Tensor:  # type: ignore
         outputs = super().forward(inputs)
         return outputs[0]

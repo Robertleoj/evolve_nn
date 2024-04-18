@@ -46,6 +46,7 @@ evolution_config = EvolutionConfig(
     num_edges_weight=1e-4,
     num_parameters_weight=1e-4,
     softmax_temp=0.2,
+    max_num_subgraphs=3
 )
 
 # %%
@@ -53,12 +54,22 @@ init_spec = {
     "node_specs": [
         {"name": "input"},
         {"name": "output"},
+        {'name': 'response_input'},
+        {'name': 'add'},
+        {'name': 'loss_output'}
     ],
-    "rev_adj_list": [[], [0]],
+    "rev_adj_list": [[], [0], [], [1,2], [3]],
     "input_node_order": [0],
     "output_node_order": [1],
+    "response_input_node_order": [2],
 }
 
+
+# %%
+g_test = graph_.make_graph(**init_spec)
+
+# %%
+graph_.show_graph(g_test)
 
 # %%
 # define the problem: Sine wave
@@ -92,7 +103,6 @@ def evaluate_net(graph_net, compiled_net, x, y, evolution_config):
 
 # %%
 
-
 def train_eval_single_net(args) -> float:
     torch.set_num_threads(1)
     individual, x, y, evolution_config = args
@@ -105,8 +115,6 @@ def train_eval_single_net(args) -> float:
     # net = compiled.compile(graph_net)
     if len(list(compiled.parameters())) > 0:
         try:
-            loss_fn = torch.nn.MSELoss()
-            # optimizer = torch.optim.SGD(compiled.parameters(), lr=learning_rate, momentum=momentum)
             optimizer = torch.optim.Adam(compiled.parameters(), lr=learning_rate)
             x_in = rearrange(x, "b -> b")
             targ = rearrange(y, "b -> b")
@@ -117,7 +125,7 @@ def train_eval_single_net(args) -> float:
                 output = compiled([x_in])[0]
                 if output.shape != targ.shape:
                     raise ValueError("Shapes don't match")
-                loss = loss_fn(output, targ)
+                loss = torch.mean(compiled.response_forward([targ]))
                 loss.backward()
                 optimizer.step()
 
@@ -152,6 +160,9 @@ def evaluate_population(population, evolution_config):
         out = []
         for result in tqdm(p.imap(train_eval_single_net, args), desc="Evaluating population", total=len(population)):
             out.append(result)
+
+    # for arg in tqdm(args, desc="Evaluating population", total=len(population)):
+    #     out = train_eval_single_net(arg)
 
     fitness_scores, y_hats = zip(*out)
 
@@ -202,11 +213,22 @@ def report_data(population, fitness_scores, y_hats, recombination_probs, folder_
     probabilities: list[float] = recombination_probs.tolist()
     probabilities.sort(reverse=True)
 
-    fig, ax = plt.subplots()
+    fig, ax = plt.subplots(figsize=(15, 5))
     ax.bar(range(len(probabilities)), probabilities)
+    ax.set_title("Survival probabilities")
     plt.savefig(generation_path / "probabilities.png")
     plt.show()
     plt.close(fig)
+
+    # bar plot of fitness scores
+    fig, ax = plt.subplots(figsize=(15, 5))
+    ordered_fitness = [x[0] for x in ordered]
+    ax.bar(range(len(ordered_fitness)), ordered_fitness)
+    ax.set_title("Fitness scores")
+    plt.savefig(generation_path / "fitness_scores.png")
+    plt.show()
+    plt.close(fig)
+
 
 
 def generate_folder_name() -> str:

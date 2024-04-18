@@ -76,12 +76,25 @@ class AddNode(OperatorNode):
     """A node that adds two or more tensors."""
 
     name = "add"
-    n_inputs = (1, None)
+    n_inputs = (2, None)
 
     def get_op(self) -> nn.Module:
         """Perform the addition operation."""
         return AddMod()
 
+class NegMod(nn.Module):
+    def forward(self, inp: list[torch.Tensor]) -> torch.Tensor:
+        return -inp[0]
+
+class NegNode(OperatorNode):
+    """A node that negates a tensor."""
+
+    name = "neg"
+    n_inputs = (1, 1)
+
+    def get_op(self) -> nn.Module:
+        """Perform the negation operation."""
+        return NegMod()
 
 class ProdMod(nn.Module):
     def forward(self, inp: list[torch.Tensor]) -> torch.Tensor:
@@ -92,7 +105,7 @@ class ProdNode(OperatorNode):
     """A node that multiplies two or more tensors."""
 
     name = "prod"
-    n_inputs = (1, None)
+    n_inputs = (2, None)
 
     def get_op(self) -> nn.Module:
         """Perform the multiplication operation."""
@@ -163,12 +176,14 @@ class SubGraphNode(OperatorNode):
         return compiled_.SubCompiledGraph.from_graph(self.subgraph)
 
 
-op_nodes: list[type[OperatorNode]] = [AddNode, ProdNode, GELUNode, ExpNode, SubGraphNode]
+op_nodes: list[type[OperatorNode]] = [AddNode, NegNode, ProdNode, GELUNode, ExpNode, SubGraphNode]
 
 data_nodes: list[type[DataNode]] = [
     InputNode,
     OutputNode,
     ParameterNode,
+    ResponseInputNode,
+    LossOutputNode,
 ]
 
 op_node_name_to_node: dict[str, type[OperatorNode]] = {node.name: node for node in op_nodes}

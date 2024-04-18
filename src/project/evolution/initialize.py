@@ -32,6 +32,8 @@ def random_graph_mut_hps(evolution_config: EvolutionConfig) -> GraphMutHP:
         max_num_mutations=max_num_mutations,
         operator_probabilities=operator_probabilities,
         subgraph_operator_probabilities=sub_op_probs,
+        max_num_subgraphs=evolution_config.max_num_subgraphs,
+        max_subgraph_depth=evolution_config.max_subgraph_depth,
     )
 
 
