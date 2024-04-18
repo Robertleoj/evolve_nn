@@ -22,16 +22,18 @@ from datetime import datetime
 from itertools import repeat
 from pathlib import Path
 from timeit import default_timer
+from IPython.display import display
 
 import matplotlib.pyplot as plt
 import torch
 import torch.multiprocessing as mp
 from einops import rearrange
 from project.evolution.initialize import initialize_population
-from project.evolution.select_and_mutate import select_and_mutate
-from project.graph.graph import CompiledGraph, get_graph_svg, show_compiled
 from project.type_defs import EvolutionConfig
 from project.utils.paths import get_results_dir
+from project.evolution.select_and_mutate import select_and_mutate
+import project.graph.compiled as compiled_
+import project.graph.graph as graph_
 from tqdm import tqdm
 
 # %%
@@ -41,8 +43,8 @@ evolution_config = EvolutionConfig(
     population_size=1000,
     top_k_stay=3,
     num_epochs_training=1000,
-    num_edges_weight=1e-3,
-    num_parameters_weight=1e-3,
+    num_edges_weight=1e-4,
+    num_parameters_weight=1e-4,
     softmax_temp=0.2,
 )
 
@@ -96,7 +98,7 @@ def train_eval_single_net(args) -> float:
     individual, x, y, evolution_config = args
     graph = individual.graph
 
-    compiled = CompiledGraph.from_graph(graph)
+    compiled = compiled_.CompiledGraph.from_graph(graph)
 
     learning_rate = individual.training_hp.lr
 
@@ -125,7 +127,7 @@ def train_eval_single_net(args) -> float:
         except Exception as e:
             print("Failed to train net")
             print(e)
-            show_compiled(compiled)
+            compiled_.show_compiled(compiled)
             raise e
 
     default_timer()
@@ -161,7 +163,6 @@ def evaluate_population(population, evolution_config):
 
 # %%
 
-
 def report_data(population, fitness_scores, y_hats, recombination_probs, folder_path: Path, generation: int) -> None:
     generation_path = folder_path / f"generation_{generation}"
     generation_path.mkdir(parents=True, exist_ok=True)
@@ -181,7 +182,7 @@ def report_data(population, fitness_scores, y_hats, recombination_probs, folder_
     ordered_to_show = ordered[:num_to_show]
 
     _, ind_to_show, y_hats_to_show = zip(*ordered_to_show)
-    svgs = [get_graph_svg(ind.graph) for ind in ind_to_show]
+    svgs = [graph_.get_graph_svg(ind.graph) for ind in ind_to_show]
 
     graphs_path = generation_path / "graphs"
     graphs_path.mkdir()
