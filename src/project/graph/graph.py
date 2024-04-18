@@ -11,18 +11,19 @@ TODO: check that:
 * Data nodes only point to Operator nodes
 """
 from __future__ import annotations
+
 import math
 from collections import defaultdict
 from typing import Any
 from uuid import uuid4
 
 import networkx as nx
+import project.graph.nodes as nodes_
 import torch
 import torch.nn as nn
 from graphviz import Digraph
 from IPython.display import SVG, display
 from project.utils.graph_utils import topsort_edge_list
-import project.graph.nodes as nodes_
 
 
 class Graph:

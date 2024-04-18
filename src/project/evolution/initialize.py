@@ -1,8 +1,8 @@
 import random
 
-from project.evolution.individual import Individual
 import project.graph.graph as graph_
 import project.graph.nodes as nodes_
+from project.evolution.individual import Individual
 from project.type_defs import EvolutionConfig, GraphMutHP, TrainingHP
 from project.variation_ops.graph_mutation import graph_mutation_functions, mutate_graph
 

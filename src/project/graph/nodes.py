@@ -1,9 +1,11 @@
 from __future__ import annotations
+
 import math
+from typing import Any
+
+import project.graph.graph as graph_
 import torch
 import torch.nn as nn
-import project.graph.graph as graph_
-from typing import Any
 
 
 class Node:

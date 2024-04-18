@@ -28,10 +28,10 @@ import torch
 import torch.multiprocessing as mp
 from einops import rearrange
 from project.evolution.initialize import initialize_population
-from project.graph.graph import CompiledGraph, get_graph_svg, show_compiled, show_graph
+from project.evolution.select_and_mutate import select_and_mutate
+from project.graph.graph import CompiledGraph, get_graph_svg, show_compiled
 from project.type_defs import EvolutionConfig
 from project.utils.paths import get_results_dir
-from project.evolution.select_and_mutate import select_and_mutate
 from tqdm import tqdm
 
 # %%

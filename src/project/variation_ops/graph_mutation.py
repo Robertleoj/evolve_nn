@@ -4,8 +4,8 @@ from collections import defaultdict
 from copy import deepcopy
 from queue import deque
 from typing import Callable
+
 import networkx as nx
-from typing import ParamSpec
 
 import project.graph.graph as graph_
 import project.graph.nodes as nodes_
