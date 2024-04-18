@@ -98,9 +98,6 @@ def train_eval_single_net(args) -> float:
 
     compiled = CompiledGraph.from_graph(graph)
 
-    x = torch.tensor(x)
-    y = torch.tensor(y)
-
     learning_rate = individual.training_hp.lr
 
     # net = compiled.compile(graph_net)
@@ -146,13 +143,9 @@ def replace_invalid_with_high(values, high_value=100):
 
 
 def evaluate_population(population, evolution_config):
-    x_np = x.numpy()
-    y_np = y.numpy()
+    args = zip(population, repeat(x), repeat(y), repeat(evolution_config))
 
-    args = zip(population, repeat(x_np), repeat(y_np), repeat(evolution_config))
-
-    # Make sure args is iterable of iterables (e.g., list of tuples)
-    with mp.Pool(16) as p:
+    with mp.Pool(15) as p:
         # with ThreadPoolExecutor(16) as p:
         out = []
         for result in tqdm(p.imap(train_eval_single_net, args), desc="Evaluating population", total=len(population)):

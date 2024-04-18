@@ -39,12 +39,21 @@ class InputNode(DataNode):
 
     name = "input"
 
+class ResponseInputNode(DataNode):
+    """A node that represents response input data."""
+
+    name = "response_input"
+
 
 class OutputNode(DataNode):
     """A node that represents output data."""
 
     name = "output"
 
+class LossOutputNode(DataNode):
+    """A node that represents the loss output data."""
+
+    name = "loss_output"
 
 class ParameterNode(DataNode):
     """A node that represents a learnable parameter."""
@@ -149,7 +158,6 @@ class ExpNode(OperatorNode):
         """Perform the exp operation."""
         return ExpMod()
 
-
 class Graph:
     """A computational graph.
 
@@ -165,14 +173,18 @@ class Graph:
     ordered_input_nodes: list[str]
     ordered_output_nodes: list[str]
     subgraphs: list["Graph"]
+    is_subgraph: bool = False
+    ordered_respone_input_nodes: list[str] | None
+    loss_output_node: str | None
 
     def __init__(
-        self,
+        self, *,
         id_to_node: dict[str, Node],
         rev_adj_list: dict[str, list[str]],
         ordered_input_nodes: list[str],
         ordered_output_nodes: list[str],
         subgraphs: list["Graph"] = [],
+        ordered_respoone_input_nodes: list[str] = None
     ) -> None:
         """Create a graph.
 
@@ -183,11 +195,16 @@ class Graph:
         """
         self.id_to_node = id_to_node
         self.rev_adj_list = dict(rev_adj_list)
-        for node_id in self.id_to_node.keys():
+
+        self.loss_output_node = None
+        for node_id, node in self.id_to_node.items():
+            if isinstance(node, LossOutputNode):
+                self.loss_output_node = node_id
             if node_id not in self.rev_adj_list:
                 self.rev_adj_list[node_id] = []
         self.ordered_input_nodes = ordered_input_nodes
         self.ordered_output_nodes = ordered_output_nodes
+        self.ordered_response_input_nodes = ordered_respoone_input_nodes
         self.subgraphs = subgraphs
 
     def add_node(self, node: Node) -> str:
@@ -323,7 +340,6 @@ def make_graph(
         subgraphs=subgraphs,
     )
 
-
 class CompiledGraph(nn.Module):
     """Compiled graph for inference and training.
 
@@ -342,6 +358,7 @@ class CompiledGraph(nn.Module):
     output_nodes: list[int]
     stored_modules: nn.ModuleDict
     stored_parameters: nn.ParameterDict
+    curr_data: list[None | torch.Tensor]
 
     def __init__(
         self,
@@ -383,24 +400,33 @@ class CompiledGraph(nn.Module):
         self.rev_adjacency_list = sorted_rev_adj_list
 
         self.stored_modules = nn.ModuleDict()
+        self.stored_parameters = nn.ParameterDict()
+        self.input_nodes = []
+        self.output_nodes = []
         for node_id, node in enumerate(self.nodes):
             if isinstance(node, OperatorNode):
                 self.stored_modules[str(node_id)] = node.get_op()
 
-        self.stored_parameters = nn.ParameterDict()
-        for node_id, node in enumerate(self.nodes):
             if isinstance(node, ParameterNode):
                 self.stored_parameters[str(node_id)] = nn.Parameter(torch.empty(1))
 
-        self.reset_parameters()
+            if isinstance(node, InputNode):
+                self.input_nodes.append(node_id)
 
-        self.input_nodes = [i for i, node in enumerate(self.nodes) if isinstance(node, InputNode)]
-        self.output_nodes = [i for i, node in enumerate(self.nodes) if isinstance(node, OutputNode)]
+            if isinstance(node, OutputNode):
+                self.output_nodes.append(node_id)
+
+        self.reset_parameters()
+        self.reset_data()
 
     def reset_parameters(self) -> None:
         """Reset the parameters of the graph."""
         for param in self.stored_parameters.values():
             nn.init.normal_(param, mean=0, std=1 / math.sqrt(2))
+
+    def reset_data(self) -> None:
+        """Reset the data of the graph."""
+        self.curr_data = [None for _ in self.nodes]
 
     @classmethod
     def from_graph(cls, graph: Graph) -> "CompiledGraph":
@@ -441,20 +467,23 @@ class CompiledGraph(nn.Module):
         Returns:
             List of output tensors.
         """
-        data: list[None | torch.Tensor] = [None for _ in range(len(self.nodes))]
+        self.reset_data()
 
         for node_id, input in zip(self.input_nodes, inputs):
-            data[node_id] = input
+            self.curr_data[node_id] = input
 
         for node_id, param in self.stored_parameters.items():
-            data[int(node_id)] = param
+            self.curr_data[int(node_id)] = param
 
-        for node_id in range(len(self.nodes)):
-            self.infer_node(node_id, data)
+        for node_id, node in enumerate(self.nodes):
+            if isinstance(node, ResponseInputNode | LossOutputNode):
+                break
 
-        return [data[node_id] for node_id in self.output_nodes]
+            self.infer_node(node_id)
 
-    def infer_node(self, node_id: int, data: list[None | torch.Tensor]) -> None:
+        return [self.curr_data[node_id] for node_id in self.output_nodes]
+
+    def infer_node(self, node_id: int) -> None:
         """Infer the value of a node.
 
         Args:
@@ -463,7 +492,7 @@ class CompiledGraph(nn.Module):
         """
         node = self.nodes[node_id]
 
-        if data[node_id] is not None:
+        if self.curr_data[node_id] is not None:
             return
 
         if isinstance(node, OutputNode):
@@ -471,18 +500,18 @@ class CompiledGraph(nn.Module):
 
             assert len(input_node_ids) == 1, "Output nodes should only have one incoming edge."
             input_node_id = input_node_ids[0]
-            data[node_id] = data[input_node_id]
+            self.curr_data[node_id] = self.curr_data[input_node_id]
             return
 
         if isinstance(node, OperatorNode):
             input_data = []
             for i in self.rev_adjacency_list[node_id]:
-                inp_data = data[i]
+                inp_data = self.curr_data[i]
                 assert inp_data is not None, f"Inferring node {node_id}: node {i} has not been inferred yet."
                 input_data.append(inp_data)
 
             op = self.stored_modules[str(node_id)]
-            data[node_id] = op(input_data)
+            self.curr_data[node_id] = op(input_data)
 
 
 def show_compiled(graph: CompiledGraph) -> None:
