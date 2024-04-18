@@ -4,6 +4,7 @@ import math
 from typing import Any
 
 import project.graph.graph as graph_
+import project.graph.compiled as compiled_
 import torch
 import torch.nn as nn
 
@@ -159,7 +160,7 @@ class SubGraphNode(OperatorNode):
         self.n_inputs = (num_inputs, num_inputs)
 
     def get_op(self) -> graph_.CompiledGraph:
-        return graph_.SubCompiledGraph.from_graph(self.subgraph)
+        return compiled_.SubCompiledGraph.from_graph(self.subgraph)
 
 
 op_nodes: list[type[OperatorNode]] = [AddNode, ProdNode, GELUNode, ExpNode, SubGraphNode]
