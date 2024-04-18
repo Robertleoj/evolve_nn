@@ -145,7 +145,7 @@ def replace_invalid_with_high(values, high_value=100):
 def evaluate_population(population, evolution_config):
     args = zip(population, repeat(x), repeat(y), repeat(evolution_config))
 
-    with mp.Pool(15) as p:
+    with mp.Pool(10) as p:
         # with ThreadPoolExecutor(16) as p:
         out = []
         for result in tqdm(p.imap(train_eval_single_net, args), desc="Evaluating population", total=len(population)):
@@ -160,6 +160,7 @@ def evaluate_population(population, evolution_config):
 
 
 # %%
+
 
 def report_data(population, fitness_scores, y_hats, recombination_probs, folder_path: Path, generation: int) -> None:
     generation_path = folder_path / f"generation_{generation}"

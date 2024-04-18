@@ -1,7 +1,8 @@
 import random
 
 from project.evolution.individual import Individual
-from project.graph.graph import make_graph, op_node_name_to_node
+import project.graph.graph as graph_
+import project.graph.nodes as nodes_
 from project.type_defs import EvolutionConfig, GraphMutHP, TrainingHP
 from project.variation_ops.graph_mutation import graph_mutation_functions, mutate_graph
 
@@ -21,7 +22,7 @@ def random_graph_mut_hps(evolution_config: EvolutionConfig) -> GraphMutHP:
 
     sub_op_probs = {}
     operator_probabilities = {}
-    for op in op_node_name_to_node.keys():
+    for op in nodes_.op_node_name_to_node.keys():
         sub_op_probs[op] = random.uniform(0, 1)
         operator_probabilities[op] = random.uniform(0, 1)
 
@@ -41,7 +42,7 @@ def random_training_hp() -> TrainingHP:
 
 def random_individual(init_graph_spec: dict, evolution_config: EvolutionConfig) -> Individual:
     init_hps = random_graph_mut_hps(evolution_config)
-    init_graph = mutate_graph(make_graph(**init_graph_spec), init_hps)
+    init_graph = mutate_graph(graph_.make_graph(**init_graph_spec), init_hps)
     init_training_hp = random_training_hp()
 
     return Individual(graph_mut_hps=init_hps, graph=init_graph, training_hp=init_training_hp)
