@@ -5,6 +5,7 @@ import math
 import project.graph.graph as graph_
 import project.graph.nodes as nodes_
 import project.utils.graph_utils as graph_utils_
+import project.foundation.graph as cpp_graph_
 import torch
 import torch.nn as nn
 from graphviz import Digraph
@@ -264,3 +265,14 @@ class SubCompiledGraph(CompiledGraph):
     def forward(self, inputs: list[torch.Tensor]) -> torch.Tensor:  # type: ignore
         outputs = super().forward(inputs)
         return outputs[0]
+
+
+def to_cpp_compiled(graph: graph_.Graph) -> cpp_graph_.CompiledGraph:
+    compiled_graph = CompiledGraph.from_graph(graph)
+    cpp_nodes = [
+        nodes_.to_cpp_node(node) for node in compiled_graph.nodes
+    ]
+
+    return cpp_graph_.CompiledGraph(
+        cpp_nodes,
+    )

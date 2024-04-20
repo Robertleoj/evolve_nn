@@ -6,6 +6,7 @@ from typing import Any
 import project.graph.compiled as compiled_
 import project.graph.graph as graph_
 import torch
+import project.foundation.graph as cpp_graph
 import torch.nn as nn
 
 
@@ -52,12 +53,7 @@ class ParameterNode(DataNode):
 
 # operator nodes
 class OperatorNode(Node):
-    """A node that represents an operation.
-
-    Attributes:
-        input_shapes: Shapes of the input tensors.
-        output_shapes: Shapes of the output tensors.
-    """
+    """A node that represents an operation."""
 
     n_inputs: tuple[int, int | None]
     inputs_ordered: bool = False
@@ -213,3 +209,32 @@ def node_from_spec(spec: dict[str, Any]) -> Node:
     if "args" in spec:
         return node(**spec["args"])
     return node()
+
+
+def to_cpp_node(node: Node) -> cpp_graph.Node:
+    match node.name:
+        case "input":
+            return cpp_graph.InputNode()
+        case "response_input":
+            return cpp_graph.ResponseInputNode()
+        case "output":
+            return cpp_graph.OutputNode()
+        case "loss_output":
+            return cpp_graph.LossOutputNode()
+        case "parameter":
+            return cpp_graph.ParameterNode()
+        case "add":
+            return cpp_graph.AddNode()
+        case "neg":
+            return cpp_graph.NegNode()
+        case "prod":
+            return cpp_graph.ProdNode()
+        case "GELU":
+            return cpp_graph.GELUNode()
+        case "log":
+            return cpp_graph.LogNode()
+        case "exp":
+            return cpp_graph.ExpNode()
+        case _:
+            raise ValueError(f"Unknown node name: {node.name}")
+            
