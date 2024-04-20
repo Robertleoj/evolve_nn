@@ -9,9 +9,9 @@ import networkx as nx
 
 import project.graph.graph as graph_
 import project.graph.nodes as nodes_
-from project.utils.rand_utils import weighted_random
-from project.utils.graph_utils import are_all_reachable
 from project.type_defs import GraphMutHP
+from project.utils.graph_utils import are_all_reachable
+from project.utils.rand_utils import weighted_random
 
 DEFAULT_NUM_TRIES = 5
 
@@ -155,10 +155,9 @@ def check_graph_validity(graph: graph_.Graph) -> tuple[bool, str]:
             assert loss_out is not None
 
             # all parameter and subgraph nodes must have paths to the loss node, if exists
-            for node_id in (graph.parameter_nodes() + graph.subgraph_nodes()):
+            for node_id in graph.parameter_nodes() + graph.subgraph_nodes():
                 if not nx.has_path(g_nx, node_id, loss_out):
                     return False, f"Parameter node {node_id} has no path to loss output node"
-
 
     # no more than 1 reverse distance from input nodes
     rev_distances = get_reverse_lengths(graph)
@@ -318,7 +317,6 @@ def add_parameter(
 def add_edge(
     graph: graph_.Graph, mutation_hps, subgraph_depth: int = 0, tries: int = DEFAULT_NUM_TRIES
 ) -> tuple[graph_.Graph, bool]:
-
     node_1_candidates = nodes_that_can_have_outputs(graph)
     node_2_candidates = available_opnodes(graph)
 
@@ -441,10 +439,7 @@ def add_subgraph(graph: graph_.Graph, mutation_hps: GraphMutHP, subgraph_depth: 
     input_node_order = list(range(random_num_inputs))
 
     subgraph = graph_.make_graph(
-        node_specs=node_specs,
-        rev_adj_list=rev_adj_list,
-        input_node_order=input_node_order,
-        is_subgraph=True
+        node_specs=node_specs, rev_adj_list=rev_adj_list, input_node_order=input_node_order, is_subgraph=True
     )
 
     subgraph = mutate_graph(subgraph, mutation_hps, subgraph_depth=subgraph_depth + 1)
@@ -462,20 +457,16 @@ def remove_subgraph(
     if len(graph.subgraphs) == 0:
         return graph, False
 
-
     graph_copy = deepcopy(graph)
 
     # only remove subgraphs that do not appear in the graph
     subgraphs_to_delete = graph_copy.subgraphs
     for node in graph_copy.id_to_node.values():
         if isinstance(node, nodes_.SubGraphNode):
-            subgraphs_to_delete = [
-                s for s in subgraphs_to_delete if s is not node.subgraph
-            ]
+            subgraphs_to_delete = [s for s in subgraphs_to_delete if s is not node.subgraph]
 
     if len(subgraphs_to_delete) == 0:
         return graph, False
-
 
     # choose the subgraph randomly
     subgraph_idx = random.randint(0, len(subgraphs_to_delete) - 1)

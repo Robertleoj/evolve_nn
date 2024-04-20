@@ -82,9 +82,11 @@ class AddNode(OperatorNode):
         """Perform the addition operation."""
         return AddMod()
 
+
 class NegMod(nn.Module):
     def forward(self, inp: list[torch.Tensor]) -> torch.Tensor:
         return -inp[0]
+
 
 class NegNode(OperatorNode):
     """A node that negates a tensor."""
@@ -95,6 +97,7 @@ class NegNode(OperatorNode):
     def get_op(self) -> nn.Module:
         """Perform the negation operation."""
         return NegMod()
+
 
 class ProdMod(nn.Module):
     def forward(self, inp: list[torch.Tensor]) -> torch.Tensor:

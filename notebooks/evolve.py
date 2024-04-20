@@ -22,18 +22,18 @@ from datetime import datetime
 from itertools import repeat
 from pathlib import Path
 from timeit import default_timer
-from IPython.display import display
 
 import matplotlib.pyplot as plt
+import project.graph.compiled as compiled_
+import project.graph.graph as graph_
 import torch
 import torch.multiprocessing as mp
 from einops import rearrange
+from IPython.display import display
 from project.evolution.initialize import initialize_population
+from project.evolution.select_and_mutate import select_and_mutate
 from project.type_defs import EvolutionConfig
 from project.utils.paths import get_results_dir
-from project.evolution.select_and_mutate import select_and_mutate
-import project.graph.compiled as compiled_
-import project.graph.graph as graph_
 from tqdm import tqdm
 
 # %%
@@ -162,6 +162,7 @@ def evaluate_population(population, evolution_config):
 
 
 # %%
+
 
 def report_data(population, fitness_scores, y_hats, recombination_probs, folder_path: Path, generation: int) -> None:
     generation_path = folder_path / f"generation_{generation}"

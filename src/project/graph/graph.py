@@ -51,7 +51,7 @@ class Graph:
         ordered_output_nodes: list[str],
         subgraphs: list["Graph"] = [],
         ordered_response_input_nodes: list[str] | None = None,
-        is_subgraph: bool = False
+        is_subgraph: bool = False,
     ) -> None:
         """Create a graph.
 
@@ -170,7 +170,7 @@ def make_graph(
     subgraph_specs: list[dict[str, Any]] | None = None,
     output_node_order: list[int] | None = None,
     response_input_node_order: list[int] | None = None,
-    is_subgraph: bool = False
+    is_subgraph: bool = False,
 ) -> Graph:
     subgraphs = []
     if subgraph_specs is not None:
@@ -211,7 +211,6 @@ def make_graph(
     response_node_id_order = None
     if response_input_node_order is not None:
         response_node_id_order = [node_ids[i] for i in response_input_node_order]
-
 
     return Graph(
         id_to_node=dict(zip(node_ids, nodes)),

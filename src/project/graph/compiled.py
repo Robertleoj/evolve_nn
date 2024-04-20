@@ -1,7 +1,6 @@
 from __future__ import annotations
 
 import math
-import traceback
 
 import project.graph.graph as graph_
 import project.graph.nodes as nodes_
@@ -37,10 +36,7 @@ class CompiledGraph(nn.Module):
     graph: graph_.Graph
 
     def __init__(
-        self,
-        nodes: list[nodes_.Node],
-        rev_adjacency_list: list[list[int]],
-        parent_graph: graph_.Graph
+        self, nodes: list[nodes_.Node], rev_adjacency_list: list[list[int]], parent_graph: graph_.Graph
     ) -> None:
         """Create a compiled graph.
 
@@ -142,11 +138,7 @@ class CompiledGraph(nn.Module):
                 from_idx = node_id_to_node_idx[from_node_id]
                 idx_rev_edge_list[to_idx].append(from_idx)
 
-        return cls(
-            nodes=nodes,
-            rev_adjacency_list=idx_rev_edge_list,
-            parent_graph=graph
-        )
+        return cls(nodes=nodes, rev_adjacency_list=idx_rev_edge_list, parent_graph=graph)
 
     def forward(self, inputs: list[torch.Tensor]) -> list[torch.Tensor]:
         """Perform inference on the compiled graph.
@@ -183,7 +175,6 @@ class CompiledGraph(nn.Module):
         except Exception as e:
             show_compiled(self)
             raise e
-            
 
     def infer_node(self, node_id: int) -> None:
         """Infer the value of a node.
@@ -226,13 +217,12 @@ class CompiledGraph(nn.Module):
     def response_forward(self, inputs: list[torch.Tensor]) -> torch.Tensor:
         assert not self.is_subgraph, "response_forward should only be called on the top-level graph."
         assert self.curr_data is not None, "Data has not been initialized."
-        
+
         for node_id, input in zip(self.response_input_nodes, inputs):
             self.curr_data[node_id] = input
 
         for node_id, node in enumerate(self.nodes):
             self.infer_node(node_id)
-
 
         output = self.curr_data[self.loss_output_node]
         assert output is not None, "Loss output node has not been inferred."
@@ -270,6 +260,7 @@ def show_compiled(graph: CompiledGraph, use_regular: bool = True) -> None:
 
 class SubCompiledGraph(CompiledGraph):
     is_subgraph = True
+
     def forward(self, inputs: list[torch.Tensor]) -> torch.Tensor:  # type: ignore
         outputs = super().forward(inputs)
         return outputs[0]

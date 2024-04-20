@@ -22,18 +22,18 @@ from datetime import datetime
 from itertools import repeat
 from pathlib import Path
 from timeit import default_timer
-from IPython.display import display
 
 import matplotlib.pyplot as plt
+import project.graph.compiled as compiled_
+import project.graph.graph as graph_
 import torch
 import torch.multiprocessing as mp
 from einops import rearrange
+from IPython.display import display
 from project.evolution.initialize import initialize_population
+from project.evolution.select_and_mutate import select_and_mutate
 from project.type_defs import EvolutionConfig
 from project.utils.paths import get_results_dir
-from project.evolution.select_and_mutate import select_and_mutate
-import project.graph.compiled as compiled_
-import project.graph.graph as graph_
 from tqdm import tqdm
 
 # %%
@@ -46,7 +46,7 @@ evolution_config = EvolutionConfig(
     num_edges_weight=1e-4,
     num_parameters_weight=1e-4,
     softmax_temp=0.2,
-    max_num_subgraphs=3
+    max_num_subgraphs=3,
 )
 
 # %%
@@ -54,11 +54,11 @@ init_spec = {
     "node_specs": [
         {"name": "input"},
         {"name": "output"},
-        {'name': 'response_input'},
-        {'name': 'add'},
-        {'name': 'loss_output'}
+        {"name": "response_input"},
+        {"name": "add"},
+        {"name": "loss_output"},
     ],
-    "rev_adj_list": [[], [0], [], [1,2], [3]],
+    "rev_adj_list": [[], [0], [], [1, 2], [3]],
     "input_node_order": [0],
     "output_node_order": [1],
     "response_input_node_order": [2],
@@ -102,6 +102,7 @@ def evaluate_net(graph_net, compiled_net, x, y, evolution_config):
 
 
 # %%
+
 
 def train_eval_single_net(args) -> float:
     torch.set_num_threads(1)
@@ -174,6 +175,7 @@ def evaluate_population(population, evolution_config):
 
 # %%
 
+
 def report_data(population, fitness_scores, y_hats, recombination_probs, folder_path: Path, generation: int) -> None:
     generation_path = folder_path / f"generation_{generation}"
     generation_path.mkdir(parents=True, exist_ok=True)
@@ -230,7 +232,6 @@ def report_data(population, fitness_scores, y_hats, recombination_probs, folder_
     plt.close(fig)
 
 
-
 def generate_folder_name() -> str:
     current_time = datetime.now()
     folder_name = current_time.strftime("%Y%m%d_%H%M%S")
@@ -259,3 +260,4 @@ population = initialize_population(init_spec, evolution_config)
 # %%
 evolved = evolve(population, 1000, evolution_config)
 population = [individual for _, individual, _ in evolved]
+# use this https://stackoverflow.com/questions/68401650/how-can-i-make-a-pytorch-extension-with-cmake
