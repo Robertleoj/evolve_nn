@@ -3,6 +3,7 @@
 #include <string>
 #include <torch/torch.h>
 #include "foundation/graph/nodes.hpp"
+#include "foundation/utils.hpp"
 #include <pybind11/pybind11.h>
 #include <pybind11/numpy.h>
 
@@ -64,6 +65,7 @@ public:
         std::vector<torch::Tensor> node_outputs;
 
         for (int i = 0; i < nodes.size(); i++){
+            std::cout << "forwarding node " << i << std::endl;
 
             if(std::dynamic_pointer_cast<InputNode>(nodes[i])) {
                 // get index of input_idx in input_nodes
@@ -84,13 +86,14 @@ public:
             }
 
             if(std::dynamic_pointer_cast<OperatorNode>(nodes[i])) {
-                std::vector<torch::Tensor> inputs;
+                std::vector<torch::Tensor> node_inputs;
+
                 for (int j: rev_adj_list[i]) {
-                    inputs.push_back(node_outputs[j]);
+                    node_inputs.push_back(node_outputs[j]);
                 }
 
                 if (std::dynamic_pointer_cast<OperatorNode>(nodes[i])) {
-                    node_outputs[i] = modules[i]->forward(inputs);
+                    node_outputs.push_back(modules[i]->forward(node_inputs));
                 }
             }
         }
@@ -116,54 +119,17 @@ public:
     CompiledGraph compiled_graph;
 
     std::vector<py::array> forward(std::vector<py::array> inputs) {
-        std::vector<torch::Tensor> inputs_torch;
-        inputs_torch.reserve(inputs.size());
+        // std::cout << "getting numpy inputs" << std::endl;
+        auto tensor_inputs = from_numpy(inputs);
+        
+        // std::cout << "forwarding" << std::endl;
+        auto tensor_outputs = compiled_graph.forward(tensor_inputs);
 
-        // Convert inputs to torch::Tensor
-        for (auto &inp: inputs) {
-            auto dtype = inp.dtype();
-            torch::Dtype torch_dtype;
-            if (dtype.is(py::dtype::of<float>())) {
-                torch_dtype = torch::kFloat32;
-            } else if (dtype.is(py::dtype::of<double>())) {
-                torch_dtype = torch::kFloat64;
-            } else if (dtype.is(py::dtype::of<int>())) {
-                torch_dtype = torch::kInt32;
-            } else {
-                throw std::runtime_error("Unsupported data type");
-            }
+        // std::cout << "getting numpy outputs" << std::endl;
+        auto numpy_outputs = to_numpy(tensor_outputs);
 
-                    // Adjust shape conversion
-            std::vector<int64_t> shape(inp.ndim());
-            for (size_t i = 0; i < shape.size(); ++i) {
-                shape[i] = inp.shape(i);
-            }
-
-            inputs_torch.push_back(torch::from_blob(
-                inp.mutable_data(), 
-                shape,
-                torch_dtype)
-            );
-        }
-
-        // Assume compiled_graph is an instance of some model that can process this
-        std::vector<torch::Tensor> outputs = compiled_graph.forward(inputs_torch);
-
-        std::vector<py::array> outputs_np;
-        outputs_np.reserve(outputs.size());
-
-        // Convert outputs to py::array
-        for (auto &out: outputs) {
-            py::dtype dtype = py::dtype::of<float>(); // Defaulting to float; change as necessary
-            if (out.scalar_type() == torch::kFloat64) {
-                dtype = py::dtype::of<double>();
-            } else if (out.scalar_type() == torch::kInt32) {
-                dtype = py::dtype::of<int>();
-            }
-            outputs_np.push_back(py::array(dtype, out.sizes(), out.strides(), out.data_ptr()));
-        }
-
-        return outputs_np;
+        // std::cout << "returning numpy outputs" << std::endl;
+        return numpy_outputs;
     }
 
 };

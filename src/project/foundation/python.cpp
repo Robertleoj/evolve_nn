@@ -31,42 +31,43 @@ PYBIND11_MODULE(foundation, m) {
 
     // Binding node classes with constructors
 
-    py::class_<Node>(graphMod, "Node");
+    py::class_<Node, std::shared_ptr<Node>>(graphMod, "Node");
 
-    py::class_<DataNode, Node>(graphMod, "DataNode");
+    py::class_<DataNode, Node, std::shared_ptr<DataNode>>(graphMod, "DataNode");
 
-    py::class_<InputNode, DataNode>(graphMod, "InputNode")
+    py::class_<InputNode, DataNode, std::shared_ptr<InputNode>>(graphMod, "InputNode")
         .def(py::init<>());
 
-    py::class_<ResponseInputNode, DataNode>(graphMod, "ResponseInputNode")
+    py::class_<ResponseInputNode, DataNode, std::shared_ptr<ResponseInputNode>>(graphMod, "ResponseInputNode")
         .def(py::init<>());
 
-    py::class_<OutputNode, DataNode>(graphMod, "OutputNode")
+    py::class_<OutputNode, DataNode, std::shared_ptr<OutputNode>>(graphMod, "OutputNode")
         .def(py::init<>());
 
-    py::class_<LossOutputNode, DataNode>(graphMod, "LossOutputNode")
+    py::class_<LossOutputNode, DataNode, std::shared_ptr<LossOutputNode>>(graphMod, "LossOutputNode")
         .def(py::init<>());
 
-    py::class_<ParameterNode, DataNode>(graphMod, "ParameterNode")
+    py::class_<ParameterNode, DataNode, std::shared_ptr<ParameterNode>>(graphMod, "ParameterNode")
         .def(py::init<>());
 
-    py::class_<OperatorNode, Node>(graphMod, "OperatorNode");
+    py::class_<OperatorNode, Node, std::shared_ptr<OperatorNode>>(graphMod, "OperatorNode");
 
-    py::class_<AddNode, OperatorNode>(graphMod, "AddNode");
-
-    py::class_<NegNode, OperatorNode>(graphMod, "NegNode")
+    py::class_<AddNode, OperatorNode, std::shared_ptr<AddNode>>(graphMod, "AddNode")
         .def(py::init<>());
 
-    py::class_<ProdNode, OperatorNode>(graphMod, "ProdNode")
+    py::class_<NegNode, OperatorNode, std::shared_ptr<NegNode>>(graphMod, "NegNode")
         .def(py::init<>());
 
-    py::class_<GELUNode, OperatorNode>(graphMod, "GELUNode")
+    py::class_<ProdNode, OperatorNode, std::shared_ptr<ProdNode>>(graphMod, "ProdNode")
         .def(py::init<>());
 
-    py::class_<LogNode, OperatorNode>(graphMod, "LogNode")
+    py::class_<GELUNode, OperatorNode, std::shared_ptr<GELUNode>>(graphMod, "GELUNode")
         .def(py::init<>());
 
-    py::class_<ExpNode, OperatorNode>(graphMod, "ExpNode")
+    py::class_<LogNode, OperatorNode, std::shared_ptr<LogNode>>(graphMod, "LogNode")
+        .def(py::init<>());
+
+    py::class_<ExpNode, OperatorNode, std::shared_ptr<ExpNode>>(graphMod, "ExpNode")
         .def(py::init<>());
 
     py::class_<CompiledGraphWrapper>(graphMod, "CompiledGraph")

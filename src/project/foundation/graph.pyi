@@ -1,8 +1,8 @@
 import numpy
 
 class AddNode(OperatorNode):
-    def __init__(self, *args, **kwargs) -> None:
-        """Initialize self.  See help(type(self)) for accurate signature."""
+    def __init__(self) -> None:
+        """__init__(self: foundation.graph.AddNode) -> None"""
 
 class CompiledGraph:
     def __init__(self, nodes_topsorted: list[Node], rev_adj_list: list[list[int]], input_order: list[int], output_order: list[int]) -> None:

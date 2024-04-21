@@ -22,12 +22,11 @@ from datetime import datetime
 from itertools import repeat
 from pathlib import Path
 from timeit import default_timer
+import numpy as np
 
 import matplotlib.pyplot as plt
 import project.graph.compiled as compiled_
 import project.graph.graph as graph_
-import torch
-import torch.multiprocessing as mp
 from einops import rearrange
 from IPython.display import display
 from project.evolution.initialize import initialize_population
@@ -52,32 +51,44 @@ evolution_config = EvolutionConfig(
 init_spec = {
     "node_specs": [
         {"name": "input"},
+        {'name': 'add'},
         {"name": "output"},
     ],
-    "rev_adj_list": [[], [0]],
+    "rev_adj_list": [[], [0, 0], [1]],
     "input_node_order": [0],
-    "output_node_order": [1],
+    "output_node_order": [2],
 }
 
 
 # %%
 # define the problem: Sine wave
-x = torch.linspace(0, 1, 100)
-y_clean = torch.sin(x * torch.pi * 2)
+x = np.linspace(0, 1, 100)
+y_clean = np.sin(x * np.pi * 2)
 # y_clean = torch.sin(x ** 2)
 # y_clean =  (x - 0.2) * (x - 0.8) * (x - 1.4)
-y = y_clean + 0.05 * torch.randn(x.size())
+y = y_clean + 0.05 * np.random.randn(*x.shape)
 
 plt.scatter(x, y)
 plt.plot(x, y_clean, color="red")
+
+# %%
+g = graph_.make_graph(**init_spec)
+
+# %%
+graph_.show_graph(g)
+
+# %%
+comp_cpp = compiled_.to_cpp_compiled(g)
+
+# %%
+comp_cpp.forward([x])
 
 
 # %%
 def evaluate_net(graph_net, compiled_net, x, y, evolution_config):
     compiled_net.eval()
-    with torch.no_grad():
-        output = compiled_net([x])
-        loss = torch.nn.MSELoss()(output[0], y)
+    output = compiled_net([x])
+    loss = np.mean((output[0] - y) ** 2)
 
     num_edges = len(graph_net.edge_list)
     num_parameters = len(graph_net.parameter_nodes())

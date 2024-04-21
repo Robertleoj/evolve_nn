@@ -26,7 +26,7 @@ def build() -> None:
     build_path = Path("build")
     build_path.mkdir(exist_ok=True)
 
-    subprocess.run(["cmake", "-B", str(build_path), "-G", "Ninja", "-DCMAKE_BUILD_TYPE=Release"], check=True)
+    subprocess.run(["cmake", "-B", str(build_path), "-G", "Ninja", "-DCMAKE_BUILD_TYPE=Debug"], check=True)
 
     subprocess.run(["ninja", "-C", str(build_path)])
 

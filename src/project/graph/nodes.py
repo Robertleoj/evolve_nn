@@ -5,9 +5,9 @@ from typing import Any
 
 import project.graph.compiled as compiled_
 import project.graph.graph as graph_
-import torch
 import project.foundation.graph as cpp_graph
-import torch.nn as nn
+from project.type_defs import NumpyModule
+import numpy as np
 
 
 class Node:
@@ -58,13 +58,13 @@ class OperatorNode(Node):
     n_inputs: tuple[int, int | None]
     inputs_ordered: bool = False
 
-    def get_op(self) -> nn.Module:
+    def get_op(self) -> NumpyModule:
         """Perform the operation."""
         raise NotImplementedError
 
 
-class AddMod(nn.Module):
-    def forward(self, inp: list[torch.Tensor]) -> torch.Tensor:
+class AddMod(NumpyModule):
+    def __call__(self, inp: list[np.ndarray]) -> np.ndarray:
         return sum(inp)  # type: ignore
 
 
@@ -74,13 +74,13 @@ class AddNode(OperatorNode):
     name = "add"
     n_inputs = (2, None)
 
-    def get_op(self) -> nn.Module:
+    def get_op(self) -> NumpyModule:
         """Perform the addition operation."""
         return AddMod()
 
 
-class NegMod(nn.Module):
-    def forward(self, inp: list[torch.Tensor]) -> torch.Tensor:
+class NegMod(NumpyModule):
+    def __call__(self, inp: list[np.ndarray]) -> np.ndarray:
         return -inp[0]
 
 
@@ -90,13 +90,13 @@ class NegNode(OperatorNode):
     name = "neg"
     n_inputs = (1, 1)
 
-    def get_op(self) -> nn.Module:
+    def get_op(self) -> NumpyModule:
         """Perform the negation operation."""
         return NegMod()
 
 
-class ProdMod(nn.Module):
-    def forward(self, inp: list[torch.Tensor]) -> torch.Tensor:
+class ProdMod(NumpyModule):
+    def __call__(self, inp: list[np.ndarray]) -> np.ndarray:
         return math.prod(inp)
 
 
@@ -106,14 +106,14 @@ class ProdNode(OperatorNode):
     name = "prod"
     n_inputs = (2, None)
 
-    def get_op(self) -> nn.Module:
+    def get_op(self) -> NumpyModule:
         """Perform the multiplication operation."""
         return ProdMod()
 
 
-class GELUMod(nn.Module):
-    def forward(self, inp: list[torch.Tensor]) -> torch.Tensor:
-        return nn.functional.gelu(inp[0])
+class GELUMod(NumpyModule):
+    def __call__(self, inp: list[np.ndarray]) -> np.ndarray:
+        return 0.5 * inp[0] * (1 + np.tanh(math.sqrt(2 / math.pi) * (inp[0] + 0.044715 * inp[0] ** 3)))
 
 
 class GELUNode(OperatorNode):
@@ -122,14 +122,14 @@ class GELUNode(OperatorNode):
     name = "GELU"
     n_inputs = (1, 1)
 
-    def get_op(self) -> nn.Module:
+    def get_op(self) -> NumpyModule:
         """Perform the ReLu operation."""
         return GELUMod()
 
 
-class LogMod(nn.Module):
-    def forward(self, inp: list[torch.Tensor]) -> torch.Tensor:
-        return torch.log(inp[0])
+class LogMod(NumpyModule):
+    def __call__(self, inp: list[np.ndarray]) -> np.ndarray:
+        return np.log(inp[0])
 
 
 class LogNode(OperatorNode):
@@ -139,14 +139,14 @@ class LogNode(OperatorNode):
 
     n_inputs = (1, 1)
 
-    def get_op(self) -> nn.Module:
+    def get_op(self) -> NumpyModule:
         """Perform the log operation."""
         return LogMod()
 
 
-class ExpMod(nn.Module):
-    def forward(self, inp: list[torch.Tensor]) -> torch.Tensor:
-        return torch.exp(inp[0])
+class ExpMod(NumpyModule):
+    def __call__(self, inp: list[np.ndarray]) -> np.ndarray:
+        return np.exp(inp[0])
 
 
 class ExpNode(OperatorNode):
@@ -155,7 +155,7 @@ class ExpNode(OperatorNode):
     name = "exp"
     n_inputs = (1, 1)
 
-    def get_op(self) -> nn.Module:
+    def get_op(self) -> NumpyModule:
         """Perform the exp operation."""
         return ExpMod()
 
