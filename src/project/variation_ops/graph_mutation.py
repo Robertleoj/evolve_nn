@@ -69,6 +69,10 @@ def check_graph_validity(graph: graph_.Graph) -> tuple[bool, str]:
         if not isinstance(node, nodes_.Node):
             return False, f"Node {node_id} is not an instance of Node"
 
+    # must be at least one parameter
+    if len(graph.parameter_nodes()) == 0:
+        return False, "Graph has no parameter nodes"
+
     adj_list = graph.adj_list
     rev_adj_list = graph.rev_adj_list
     input_nodes = graph.input_nodes()
