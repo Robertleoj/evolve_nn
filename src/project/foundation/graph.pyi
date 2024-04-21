@@ -5,7 +5,13 @@ class AddNode(OperatorNode):
         """__init__(self: foundation.graph.AddNode) -> None"""
 
 class CompiledGraph:
-    def __init__(self, nodes_topsorted: list[Node], rev_adj_list: list[list[int]], input_order: list[int], output_order: list[int]) -> None:
+    def __init__(
+        self,
+        nodes_topsorted: list[Node],
+        rev_adj_list: list[list[int]],
+        input_order: list[int],
+        output_order: list[int],
+    ) -> None:
         """__init__(self: foundation.graph.CompiledGraph, nodes_topsorted: list[foundation.graph.Node], rev_adj_list: list[list[int]], input_order: list[int], output_order: list[int]) -> None"""
     def forward(self, arg0: list[numpy.ndarray]) -> list[numpy.ndarray]:
         """forward(self: foundation.graph.CompiledGraph, arg0: list[numpy.ndarray]) -> list[numpy.ndarray]"""

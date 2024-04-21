@@ -1,13 +1,11 @@
 import numpy as np
-
-import matplotlib.pyplot as plt
 import project.graph.compiled as compiled_
 import project.graph.graph as graph_
 
 init_spec = {
     "node_specs": [
         {"name": "input"},
-        {'name': 'add'},
+        {"name": "add"},
         {"name": "output"},
     ],
     "rev_adj_list": [[], [0, 0], [1]],

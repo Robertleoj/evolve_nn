@@ -3,11 +3,11 @@ from __future__ import annotations
 import math
 from typing import Any
 
+import numpy as np
+import project.foundation.graph as cpp_graph
 import project.graph.compiled as compiled_
 import project.graph.graph as graph_
-import project.foundation.graph as cpp_graph
 from project.type_defs import NumpyModule
-import numpy as np
 
 
 class Node:
@@ -237,4 +237,3 @@ def to_cpp_node(node: Node) -> cpp_graph.Node:
             return cpp_graph.ExpNode()
         case _:
             raise ValueError(f"Unknown node name: {node.name}")
-            

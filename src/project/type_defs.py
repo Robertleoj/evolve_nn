@@ -1,6 +1,6 @@
 """Useful types."""
 from dataclasses import dataclass
-from typing import Callable
+
 import numpy as np
 
 

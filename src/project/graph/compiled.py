@@ -3,13 +3,13 @@ from __future__ import annotations
 import math
 
 import numpy as np
+import project.foundation.graph as cpp_graph_
 import project.graph.graph as graph_
 import project.graph.nodes as nodes_
 import project.utils.graph_utils as graph_utils_
-import project.foundation.graph as cpp_graph_
-from project.type_defs import NumpyModule
 from graphviz import Digraph
 from IPython.display import SVG, display
+from project.type_defs import NumpyModule
 
 
 class CompiledGraph:
@@ -269,9 +269,7 @@ class SubCompiledGraph(CompiledGraph):
 
 def to_cpp_compiled(graph: graph_.Graph) -> cpp_graph_.CompiledGraph:
     compiled_graph = CompiledGraph.from_graph(graph)
-    cpp_nodes = [
-        nodes_.to_cpp_node(node) for node in compiled_graph.nodes
-    ]
+    cpp_nodes = [nodes_.to_cpp_node(node) for node in compiled_graph.nodes]
 
     return cpp_graph_.CompiledGraph(
         cpp_nodes,

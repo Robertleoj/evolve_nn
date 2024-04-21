@@ -22,9 +22,9 @@ from datetime import datetime
 from itertools import repeat
 from pathlib import Path
 from timeit import default_timer
-import numpy as np
 
 import matplotlib.pyplot as plt
+import numpy as np
 import project.graph.compiled as compiled_
 import project.graph.graph as graph_
 from einops import rearrange
@@ -51,7 +51,7 @@ evolution_config = EvolutionConfig(
 init_spec = {
     "node_specs": [
         {"name": "input"},
-        {'name': 'add'},
+        {"name": "add"},
         {"name": "output"},
     ],
     "rev_adj_list": [[], [0, 0], [1]],
