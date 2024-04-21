@@ -19,6 +19,7 @@
 # %autoreload 2
 import math
 from datetime import datetime
+import random
 from pathlib import Path
 from timeit import default_timer
 
@@ -30,20 +31,22 @@ import project.graph.graph as graph_
 from IPython.display import display
 from project.evolution.initialize import initialize_population
 from project.evolution.select_and_mutate import select_and_mutate
-from project.foundation.train import train_mse_single_pass, train_population
+import project.foundation.train as cpp_train_
 from project.type_defs import EvolutionConfig
 from project.utils.paths import get_results_dir
 
 # %%
 evolution_config = EvolutionConfig(
     mutate_num_mutations=False,
-    max_num_mutations=5,
-    population_size=100,
-    top_k_stay=3,
+    max_num_mutations=10,
+    population_size=300,
+    top_k_stay=10,
     num_epochs_training=1000,
-    num_edges_weight=1e-3,
-    num_parameters_weight=1e-3,
-    softmax_temp=0.2,
+    # num_edges_weight=5e-3,
+    # num_parameters_weight=5e-3,
+    num_edges_weight=0,
+    num_parameters_weight=0,
+    softmax_temp=0.5,
     max_num_subgraphs=0,
 )
 
@@ -52,23 +55,17 @@ init_spec = {
     "node_specs": [
         {"name": "input"},
         {"name": "output"},
+        {"name": "response_input"},
+        {"name": "add"},
+        {"name": "loss_output"},
     ],
-    "rev_adj_list": [[], [0]],
+    "rev_adj_list": [[], [0], [], [1, 2], [3]],
     "input_node_order": [0],
     "output_node_order": [1],
+    "response_input_node_order": [2],
 }
 
-test_spec = {
-    "node_specs": [
-        {"name": "input"},
-        {"name": "parameter"},
-        {"name": "prod"},
-        {"name": "output"},
-    ],
-    "rev_adj_list": [[], [], [0, 1], [2]],
-    "input_node_order": [0],
-    "output_node_order": [3],
-}
+
 
 
 # %%
@@ -83,26 +80,22 @@ plt.scatter(x, y)
 plt.plot(x, y_clean, color="red")
 
 # %%
-g = graph_.make_graph(**test_spec)
+population = initialize_population(init_spec, evolution_config)
 
 # %%
+g = random.choice(population).graph
 graph_.show_graph(g)
-
-# %%
 comp_cpp = compiled_.to_cpp_compiled(g)
+out = comp_cpp.forward([x])
+plt.plot(x, out[0])
+plt.show()
+cpp_train_.response_regression_train_single_pass(graph=comp_cpp, input=[x], target=[y], num_epochs=1000, learning_rate=1e-3)
+comp_cpp.forward([x])
 
 # %%
 out = comp_cpp.forward([x])
 plt.plot(x, out[0])
-
-# %%
-out
-
-# %%
-train_mse_single_pass(graph=comp_cpp, input=[x], target=[y], num_epochs=1000, learning_rate=1e-3)
-
-# %%
-comp_cpp.forward([x])
+plt.scatter(x, y)
 
 
 # %%
@@ -133,24 +126,30 @@ def replace_invalid_with_high(values, high_value=100):
 
 
 def evaluate_population(population, evolution_config):
+    compile_start = default_timer()
     compiled_population = [compiled_.to_cpp_compiled(individual.graph) for individual in population]
+    compile_end = default_timer()
+    print("Time taken to compile population: {}".format(compile_end - compile_start))
     learning_rates = [float(individual.training_hp.lr) for individual in population]
 
     train_start = default_timer()
-    train_population(
+    cpp_train_.response_regression_train_population(
         compiled_population,
         [x],
         [y],
         evolution_config.num_epochs_training,
         learning_rates,
-        12,
+        16,
     )
     train_end = default_timer()
     print("Time taken to train population: {}".format(train_end - train_start))
 
+    evaluate_start = default_timer()
     out = []
     for individual, compiled in zip(population, compiled_population):
         out.append(evaluate_net(individual.graph, compiled, x, y, evolution_config))
+    evaluate_end = default_timer()
+    print("Time taken to evaluate population: {}".format(evaluate_end - evaluate_start))
 
     fitness_scores, y_hats = zip(*out)
 
@@ -230,16 +229,14 @@ def evolve(population, iterations, evolution_config, path: Path | None = None):
         select_and_mutate_end = default_timer()
         print("Time taken to select and mutate: {}".format(select_and_mutate_end - select_and_mutate_start))
 
-        report_start = default_timer()
-        report_data(population, fitness_scores, y_hats, recombination_probs, path, i)
-        report_end = default_timer()
-        print("Time taken to report data: {}".format(report_end - report_start))
+        if i % 1 == 0:
+            report_start = default_timer()
+            report_data(population, fitness_scores, y_hats, recombination_probs, path, i)
+            report_end = default_timer()
+            print("Time taken to report data: {}".format(report_end - report_start))
 
         population = new_population
 
-
-# %%
-population = initialize_population(init_spec, evolution_config)
 
 # %%
 evolved = evolve(population, 1000, evolution_config)

@@ -64,29 +64,36 @@ PYBIND11_MODULE(foundation, m) {
   py::class_<ExpNode, OperatorNode, std::shared_ptr<ExpNode>>(graphMod, "ExpNode").def(py::init<>());
 
   py::class_<CompiledGraphWrapper>(graphMod, "CompiledGraph")
-      .def(py::init<std::vector<std::shared_ptr<Node>>, std::vector<std::vector<int>>, std::vector<int>,
-                    std::vector<int>>(),
-           py::arg("nodes_topsorted"), py::arg("rev_adj_list"), py::arg("input_order"), py::arg("output_order"))
-      .def("forward", &CompiledGraphWrapper::forward, py::arg("inputs"));
+      .def(py::init<
+      std::vector<std::shared_ptr<Node>>, 
+      std::vector<std::vector<int>>, 
+      std::vector<int>,
+      std::vector<int>,
+      std::optional<std::vector<int>>,
+      std::optional<int>
+      >(),
+           py::arg("nodes_topsorted"), py::arg("rev_adj_list"), py::arg("input_order"), py::arg("output_order"), py::arg("response_order") = std::nullopt, py::arg("loss_node") = std::nullopt)
+      .def("forward", &CompiledGraphWrapper::forward, py::arg("inputs"))
+      .def("forward_response", &CompiledGraphWrapper::forward_response, py::arg("inputs"));
 
   // train submodule
   py::module trainMod = m.def_submodule("train", "Train module");
 
   trainMod.def(
-      "train_mse_single_pass",
+      "mse_train_single_pass",
       [](CompiledGraphWrapper &graph, std::vector<py::array> input, std::vector<py::array> target, int num_epochs,
          double learning_rate) {
         auto torch_inputs = from_numpy_vec(input);
         auto torch_targets = from_numpy_vec(target);
 
         // Call the C++ function
-        train_mse_single_pass(&graph.compiled_graph, torch_inputs, torch_targets, num_epochs, learning_rate);
+        mse_train_single_pass(&graph.compiled_graph, torch_inputs, torch_targets, num_epochs, learning_rate);
       },
       py::arg("graph"), py::arg("input"), py::arg("target"), py::arg("num_epochs"), py::arg("learning_rate"),
       "Train a model using MSE loss");
 
   trainMod.def(
-      "train_population",
+      "mse_train_population",
       [](std::vector<CompiledGraphWrapper> &population, std::vector<py::array> input, std::vector<py::array> target,
          int num_epochs, std::vector<double> learning_rates, int num_threads) {
         auto torch_inputs = from_numpy_vec(input);
@@ -98,8 +105,41 @@ PYBIND11_MODULE(foundation, m) {
         }
 
         // Call the C++ function
-        train_population(compiled_population, torch_inputs, torch_targets, num_epochs, learning_rates, num_threads);
+        mse_train_population(compiled_population, torch_inputs, torch_targets, num_epochs, learning_rates, num_threads);
       },
       py::arg("population"), py::arg("input"), py::arg("target"), py::arg("num_epochs"), py::arg("learning_rate"),
       py::arg("num_threads"), "Train a population of models");
+
+  trainMod.def(
+    "response_regression_train_single_pass",
+    [](CompiledGraphWrapper &graph, std::vector<py::array> input, std::vector<py::array> target, int num_epochs, double learning_rate) {
+      auto torch_inputs = from_numpy_vec(input);
+      auto torch_targets = from_numpy_vec(target);
+
+      // Call the C++ function
+      response_regression_train_single_pass(&graph.compiled_graph, torch_inputs, torch_targets, num_epochs, learning_rate);
+    },
+    py::arg("graph"), py::arg("input"), py::arg("target"), py::arg("num_epochs"), py::arg("learning_rate"),
+    "Train a model with evolved loss computation"
+  );
+
+  trainMod.def(
+    "response_regression_train_population",
+    [](std::vector<CompiledGraphWrapper> &population, std::vector<py::array> input, std::vector<py::array> target, int num_epochs, std::vector<double> learning_rates, int num_threads) {
+      auto torch_inputs = from_numpy_vec(input);
+      auto torch_targets = from_numpy_vec(target);
+
+      std::vector<graph::CompiledGraph *> compiled_population;
+      for (auto &model : population) {
+        compiled_population.push_back(&model.compiled_graph);
+      }
+
+      // Call the C++ function
+      response_regression_train_population(compiled_population, torch_inputs, torch_targets, num_epochs, learning_rates, num_threads);
+    },
+    py::arg("population"), py::arg("input"), py::arg("target"), py::arg("num_epochs"), py::arg("learning_rate"), py::arg("num_threads"),
+    "Train a population of models with evolved loss computation"
+  );
+
+  
 }

@@ -142,6 +142,14 @@ def check_graph_validity(graph: graph_.Graph) -> tuple[bool, str]:
     if not are_all_reachable(g_nx, set(input_nodes), set(output_nodes)):
         return False, "Not all output nodes are reachable from input nodes"
 
+    # if there is a loss node, it must be reachable from at least one output node
+    if graph.loss_output_node is not None:
+        loss_out = graph.loss_output_node
+
+        if not are_all_reachable(g_nx, set(output_nodes), {loss_out}):
+            return False, "Loss output node is not reachable from output nodes"
+
+
     if not graph.is_subgraph:
         # response nodes cannot have paths to the output
         for node_id in graph.response_nodes():

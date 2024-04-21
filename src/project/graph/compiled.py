@@ -276,4 +276,6 @@ def to_cpp_compiled(graph: graph_.Graph) -> cpp_graph_.CompiledGraph:
         compiled_graph.rev_adjacency_list,
         input_order=compiled_graph.input_nodes,
         output_order=compiled_graph.output_nodes,
+        response_order=compiled_graph.response_input_nodes,
+        loss_node=compiled_graph.loss_output_node,
     )

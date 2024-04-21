@@ -175,7 +175,14 @@ class SubGraphNode(OperatorNode):
         return compiled_.SubCompiledGraph.from_graph(self.subgraph)
 
 
-op_nodes: list[type[OperatorNode]] = [AddNode, NegNode, ProdNode, GELUNode, ExpNode, SubGraphNode]
+op_nodes: list[type[OperatorNode]] = [
+    AddNode, 
+    NegNode, 
+    ProdNode, 
+    # GELUNode, 
+    # ExpNode, 
+    SubGraphNode
+]
 
 data_nodes: list[type[DataNode]] = [
     InputNode,
