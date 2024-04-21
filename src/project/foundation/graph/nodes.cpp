@@ -5,11 +5,12 @@ namespace foundation {
 namespace graph {
 
 torch::Tensor AddMod::forward(std::vector<torch::Tensor> inputs) {
-  // Stack all tensors along a new dimension (e.g., 0)
-  auto stacked_tensors = torch::stack(inputs, 0);
 
-  // Sum across the new dimension to combine all tensors
-  return torch::sum(stacked_tensors, 0);
+  auto out = inputs[0];
+  for (size_t i = 1; i < inputs.size(); ++i) {
+    out = out + inputs[i];
+  }
+  return out;
 }
 
 std::shared_ptr<OpNodeMod> AddNode::get_op() { return std::make_shared<AddMod>(); }

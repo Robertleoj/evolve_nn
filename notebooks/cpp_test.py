@@ -28,35 +28,50 @@ import numpy as np
 import project.graph.compiled as compiled_
 import project.graph.graph as graph_
 from einops import rearrange
+import multiprocessing as mp
 from IPython.display import display
 from project.evolution.initialize import initialize_population
 from project.evolution.select_and_mutate import select_and_mutate
 from project.type_defs import EvolutionConfig
 from project.utils.paths import get_results_dir
+from project.foundation.train import train_mse_single_pass, train_population
+import project.foundation.graph as cpp_graph_
 from tqdm import tqdm
 
 # %%
 evolution_config = EvolutionConfig(
     mutate_num_mutations=False,
-    max_num_mutations=10,
-    population_size=1000,
+    max_num_mutations=5,
+    population_size=300,
     top_k_stay=3,
     num_epochs_training=1000,
     num_edges_weight=1e-4,
     num_parameters_weight=1e-4,
     softmax_temp=0.2,
+    max_num_subgraphs=0
 )
 
 # %%
 init_spec = {
     "node_specs": [
         {"name": "input"},
-        {"name": "add"},
         {"name": "output"},
     ],
-    "rev_adj_list": [[], [0, 0], [1]],
+    "rev_adj_list": [[], [0]],
     "input_node_order": [0],
-    "output_node_order": [2],
+    "output_node_order": [1],
+}
+
+test_spec = {
+    "node_specs": [
+        {"name": "input"},
+        {"name": "parameter"},
+        {"name": "prod"},
+        {"name": "output"},
+    ],
+    "rev_adj_list": [[], [], [0, 1], [2]],
+    "input_node_order": [0],
+    "output_node_order": [3],
 }
 
 
@@ -66,13 +81,13 @@ x = np.linspace(0, 1, 100)
 y_clean = np.sin(x * np.pi * 2)
 # y_clean = torch.sin(x ** 2)
 # y_clean =  (x - 0.2) * (x - 0.8) * (x - 1.4)
-y = y_clean + 0.05 * np.random.randn(*x.shape)
+y = y_clean + 0.1 * np.random.randn(*x.shape)
 
 plt.scatter(x, y)
 plt.plot(x, y_clean, color="red")
 
 # %%
-g = graph_.make_graph(**init_spec)
+g = graph_.make_graph(**test_spec)
 
 # %%
 graph_.show_graph(g)
@@ -81,13 +96,34 @@ graph_.show_graph(g)
 comp_cpp = compiled_.to_cpp_compiled(g)
 
 # %%
+out = comp_cpp.forward([x])
+plt.plot(x, out[0])
+
+# %%
+out
+
+# %%
+train_mse_single_pass(
+    graph=comp_cpp,
+    input=[x],
+    target=[y],
+    num_epochs=1000,
+    learning_rate=1e-3
+)
+
+# %%
 comp_cpp.forward([x])
 
 
 # %%
-def evaluate_net(graph_net, compiled_net, x, y, evolution_config):
-    compiled_net.eval()
-    output = compiled_net([x])
+def evaluate_net(
+    graph_net: graph_.Graph, 
+    compiled_net: cpp_graph_.CompiledGraph, 
+    x: np.ndarray, 
+    y: np.ndarray,
+    evolution_config: EvolutionConfig
+):
+    output = compiled_net.forward([x])
     loss = np.mean((output[0] - y) ** 2)
 
     num_edges = len(graph_net.edge_list)
@@ -96,73 +132,36 @@ def evaluate_net(graph_net, compiled_net, x, y, evolution_config):
     edge_weight = evolution_config.num_edges_weight
     num_parameters_weight = evolution_config.num_parameters_weight
 
-    return (loss.cpu().item() + edge_weight * num_edges + num_parameters_weight * num_parameters), [
-        o.cpu().numpy() for o in output
-    ]
+    return (loss + edge_weight * num_edges + num_parameters_weight * num_parameters), output
 
 
 # %%
-
-
-def train_eval_single_net(args) -> float:
-    torch.set_num_threads(1)
-    individual, x, y, evolution_config = args
-    graph = individual.graph
-
-    compiled = compiled_.CompiledGraph.from_graph(graph)
-
-    learning_rate = individual.training_hp.lr
-
-    # net = compiled.compile(graph_net)
-    if len(list(compiled.parameters())) > 0:
-        try:
-            loss_fn = torch.nn.MSELoss()
-            # optimizer = torch.optim.SGD(compiled.parameters(), lr=learning_rate, momentum=momentum)
-            optimizer = torch.optim.Adam(compiled.parameters(), lr=learning_rate)
-            x_in = rearrange(x, "b -> b")
-            targ = rearrange(y, "b -> b")
-
-            default_timer()
-            for i in range(evolution_config.num_epochs_training):
-                optimizer.zero_grad()
-                output = compiled([x_in])[0]
-                if output.shape != targ.shape:
-                    raise ValueError("Shapes don't match")
-                loss = loss_fn(output, targ)
-                loss.backward()
-                optimizer.step()
-
-            default_timer()
-            # print("Time taken to train net: {}".format(end_time - start_time))
-
-        except Exception as e:
-            print("Failed to train net")
-            print(e)
-            compiled_.show_compiled(compiled)
-            raise e
-
-    default_timer()
-    eval_out = evaluate_net(graph, compiled, x, y, evolution_config)
-    default_timer()
-    # print("Time taken to evaluate net: {}".format(end_time - start_time))
-    return eval_out
-
-
-# %%
-
 
 def replace_invalid_with_high(values, high_value=100):
     return [high_value if math.isinf(x) or math.isnan(x) else x for x in values]
 
 
 def evaluate_population(population, evolution_config):
-    args = zip(population, repeat(x), repeat(y), repeat(evolution_config))
 
-    with mp.Pool(10) as p:
-        # with ThreadPoolExecutor(16) as p:
-        out = []
-        for result in tqdm(p.imap(train_eval_single_net, args), desc="Evaluating population", total=len(population)):
-            out.append(result)
+    compiled_population = [compiled_.to_cpp_compiled(individual.graph) for individual in population]
+    learning_rates = [float(individual.training_hp.lr) for individual in population]
+
+    train_start = default_timer()
+    train_population(
+        compiled_population, 
+        [x], 
+        [y], 
+        evolution_config.num_epochs_training,
+        learning_rates,
+        12,
+    )
+    train_end = default_timer()
+    print("Time taken to train population: {}".format(train_end - train_start))
+
+    out = []
+    for individual, compiled in zip(population, compiled_population):
+        out.append(evaluate_net(individual.graph, compiled, x, y, evolution_config))
+
 
     fitness_scores, y_hats = zip(*out)
 
@@ -236,9 +235,16 @@ def evolve(population, iterations, evolution_config, path: Path | None = None):
         fitness_scores, y_hats = evaluate_population(population, evolution_config)
         assert len(fitness_scores) == len(population)
         assert len(y_hats) == len(population)
-        new_population, recombination_probs = select_and_mutate(population, fitness_scores, evolution_config)
 
+        select_and_mutate_start = default_timer()
+        new_population, recombination_probs = select_and_mutate(population, fitness_scores, evolution_config)
+        select_and_mutate_end  = default_timer()
+        print("Time taken to select and mutate: {}".format(select_and_mutate_end - select_and_mutate_start))
+
+        report_start = default_timer()
         report_data(population, fitness_scores, y_hats, recombination_probs, path, i)
+        report_end = default_timer()
+        print("Time taken to report data: {}".format(report_end - report_start))
 
         population = new_population
 

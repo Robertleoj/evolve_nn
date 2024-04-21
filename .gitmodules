@@ -7,3 +7,6 @@
 [submodule "external/fmt"]
 	path = external/fmt
 	url = https://github.com/fmtlib/fmt
+[submodule "external/threadpool"]
+	path = external/threadpool
+	url = git@github.com:bshoshany/thread-pool.git
