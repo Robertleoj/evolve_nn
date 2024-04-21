@@ -42,8 +42,8 @@ void mse_train_single_pass(graph::CompiledGraph *compiled_graph, std::vector<tor
 }
 
 void mse_train_population(std::vector<graph::CompiledGraph *> &population, std::vector<torch::Tensor> &input,
-                      std::vector<torch::Tensor> &target, int num_epochs, std::vector<double> learning_rates,
-                      int num_threads = 12) {
+                          std::vector<torch::Tensor> &target, int num_epochs, std::vector<double> learning_rates,
+                          int num_threads = 12) {
 
   // thread pool
   auto pool = BS::thread_pool(num_threads);
@@ -62,7 +62,6 @@ void mse_train_population(std::vector<graph::CompiledGraph *> &population, std::
   // wait for all threads to finish
   pool.wait();
 }
-
 
 void response_regression_train_single_pass(graph::CompiledGraph *compiled_graph, std::vector<torch::Tensor> &input,
                                            std::vector<torch::Tensor> &target, int num_epochs, double learning_rate) {
@@ -97,9 +96,9 @@ void response_regression_train_single_pass(graph::CompiledGraph *compiled_graph,
   }
 }
 
-void response_regression_train_population(std::vector<graph::CompiledGraph *> &population, std::vector<torch::Tensor> &input,
-                                      std::vector<torch::Tensor> &target, int num_epochs, std::vector<double> learning_rates,
-                                      int num_threads = 12) {
+void response_regression_train_population(std::vector<graph::CompiledGraph *> &population,
+                                          std::vector<torch::Tensor> &input, std::vector<torch::Tensor> &target,
+                                          int num_epochs, std::vector<double> learning_rates, int num_threads = 12) {
 
   // thread pool
   auto pool = BS::thread_pool(num_threads);
@@ -118,7 +117,6 @@ void response_regression_train_population(std::vector<graph::CompiledGraph *> &p
   // wait for all threads to finish
   pool.wait();
 }
-
 
 } // namespace train
 } // namespace foundation

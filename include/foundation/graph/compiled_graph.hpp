@@ -28,13 +28,10 @@ public:
 
   std::vector<std::optional<torch::Tensor>> curr_computation;
 
-  CompiledGraph(
-    std::vector<std::shared_ptr<Node>> nodes_topsorted, std::vector<std::vector<int>> rev_adj_list,
-    std::vector<int> input_order, 
-    std::vector<int> output_order,
-    std::optional<std::vector<int>> response_order = std::nullopt,
-    std::optional<int> loss_node = std::nullopt
-  );
+  CompiledGraph(std::vector<std::shared_ptr<Node>> nodes_topsorted, std::vector<std::vector<int>> rev_adj_list,
+                std::vector<int> input_order, std::vector<int> output_order,
+                std::optional<std::vector<int>> response_order = std::nullopt,
+                std::optional<int> loss_node = std::nullopt);
 
   std::vector<torch::Tensor> forward(std::vector<torch::Tensor> inputs);
 
@@ -45,14 +42,10 @@ public:
 
 class CompiledGraphWrapper {
 public:
-  CompiledGraphWrapper(
-    std::vector<std::shared_ptr<Node>> nodes_topsorted, 
-    std::vector<std::vector<int>> rev_adj_list,
-    std::vector<int> input_order, 
-    std::vector<int> output_order,
-    std::optional<std::vector<int>> response_order = std::nullopt,
-    std::optional<int> loss_node = std::nullopt
-  );
+  CompiledGraphWrapper(std::vector<std::shared_ptr<Node>> nodes_topsorted, std::vector<std::vector<int>> rev_adj_list,
+                       std::vector<int> input_order, std::vector<int> output_order,
+                       std::optional<std::vector<int>> response_order = std::nullopt,
+                       std::optional<int> loss_node = std::nullopt);
 
   CompiledGraph compiled_graph;
 

@@ -176,12 +176,12 @@ class SubGraphNode(OperatorNode):
 
 
 op_nodes: list[type[OperatorNode]] = [
-    AddNode, 
-    NegNode, 
-    ProdNode, 
-    # GELUNode, 
-    # ExpNode, 
-    SubGraphNode
+    AddNode,
+    NegNode,
+    ProdNode,
+    # GELUNode,
+    # ExpNode,
+    SubGraphNode,
 ]
 
 data_nodes: list[type[DataNode]] = [

@@ -18,21 +18,20 @@
 # %load_ext autoreload
 # %autoreload 2
 import math
-from datetime import datetime
 import random
+from datetime import datetime
 from pathlib import Path
 from timeit import default_timer
 
 import matplotlib.pyplot as plt
-from itertools import count
 import numpy as np
 import project.foundation.graph as cpp_graph_
+import project.foundation.train as cpp_train_
 import project.graph.compiled as compiled_
 import project.graph.graph as graph_
 from IPython.display import display
 from project.evolution.initialize import initialize_population
 from project.evolution.select_and_mutate import select_and_mutate
-import project.foundation.train as cpp_train_
 from project.type_defs import EvolutionConfig
 from project.utils.paths import get_results_dir
 
@@ -57,8 +56,8 @@ evolution_config = EvolutionConfig(
 init_spec = {
     "node_specs": [
         {"name": "input"},
-        {'name': 'parameter'},
-        {'name': "add"},
+        {"name": "parameter"},
+        {"name": "add"},
         {"name": "output"},
         {"name": "response_input"},
         {"name": "add"},
@@ -68,7 +67,7 @@ init_spec = {
         [],  # 0 input
         [],  # 1 parameter
         [0, 1],  # 2 add
-        [2],   # 3 output
+        [2],  # 3 output
         [],  # 4 response_input,
         [3, 4],  # 5 add
         [5],  # 6 loss_output
@@ -77,8 +76,6 @@ init_spec = {
     "output_node_order": [3],
     "response_input_node_order": [4],
 }
-
-
 
 
 # %%
@@ -93,15 +90,17 @@ def generate_target_poly(x: np.ndarray) -> np.ndarray:
 
     y = np.zeros_like(x)
     for i in range(order + 1):
-        y += coeff[i] * x ** i
+        y += coeff[i] * x**i
 
     return y
+
 
 def generate_target_sin(x: np.ndarray) -> np.ndarray:
     freq = random.uniform(1.0, 2.3)
     phase = random.uniform(0, 2 * math.pi)
     y = np.sin(x * freq * math.pi * 2 + phase)
     return y
+
 
 def generate_target(x: np.ndarray) -> np.ndarray:
     return generate_target_poly(x)
@@ -113,7 +112,6 @@ def generate_target(x: np.ndarray) -> np.ndarray:
 
     return random.choice(functions)(x) + 0.01 * np.random.randn(*x.shape)
 
-    
 
 # %%
 def evaluate_net(
@@ -153,7 +151,6 @@ def evaluate_population(population, x, targets, evolution_config):
         print("Time taken to compile population: {}".format(compile_end - compile_start))
         learning_rates = [float(individual.training_hp.lr) for individual in population]
 
-
         train_start = default_timer()
         cpp_train_.response_regression_train_population(
             compiled_population,
@@ -188,11 +185,11 @@ def evaluate_population(population, x, targets, evolution_config):
 # %%
 
 
-def report_data(population, fitness_scores, target, y_hats, recombination_probs, folder_path: Path, generation: int) -> None:
+def report_data(
+    population, fitness_scores, target, y_hats, recombination_probs, folder_path: Path, generation: int
+) -> None:
     generation_path = folder_path / f"generation_{generation}"
     generation_path.mkdir(parents=True, exist_ok=True)
-
-
 
     best = min(list(enumerate(fitness_scores)), key=lambda x: x[1])
 
@@ -204,7 +201,6 @@ def report_data(population, fitness_scores, target, y_hats, recombination_probs,
     best_individual = population[best_index]
     print(best_individual.training_hp)
     print(best_individual.graph_mut_hps)
-
 
     svg = graph_.get_graph_svg(best_individual.graph)
     (generation_path / "best_individual_plot.svg").write_text(svg.data)
@@ -219,7 +215,6 @@ def report_data(population, fitness_scores, target, y_hats, recombination_probs,
     plt.show()
     plt.close(fig)
 
-    scale = 5
     fig, axes = plt.subplots(1, len(target), figsize=(len(target) * 5, 5))
     for (i, targ), ax in zip(enumerate(target), axes.flatten()):
         y_hat = y_hats[i][best_index][0]
@@ -243,17 +238,12 @@ def generate_folder_name() -> str:
 
 
 def evolve(population, iterations, evolution_config, x, path: Path | None = None):
-    
     if path is None:
         path = get_results_dir() / generate_folder_name()
         print(path)
 
     for i in range(iterations):
-
-        targets = [
-            generate_target(x)
-            for _ in range(5)
-        ]
+        targets = [generate_target(x) for _ in range(5)]
 
         fitness_scores, y_hats = evaluate_population(population, x, targets, evolution_config)
         assert len(fitness_scores) == len(population)
