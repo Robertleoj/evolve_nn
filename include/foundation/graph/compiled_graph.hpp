@@ -27,7 +27,6 @@ public:
   CompiledGraph(std::vector<std::shared_ptr<Node>> nodes_topsorted, std::vector<std::vector<int>> rev_adj_list,
                 std::vector<int> input_order, std::vector<int> output_order);
 
-
   std::vector<torch::Tensor> forward(std::vector<torch::Tensor> inputs);
 };
 

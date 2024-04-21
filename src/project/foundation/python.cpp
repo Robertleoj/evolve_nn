@@ -1,6 +1,6 @@
+#include <pybind11/numpy.h>
 #include <pybind11/pybind11.h>
 #include <pybind11/stl.h>
-#include <pybind11/numpy.h>
 #include <torch/torch.h>
 
 #include <fstream>
@@ -9,9 +9,8 @@
 
 #include "foundation/graph/compiled_graph.hpp"
 #include "foundation/graph/nodes.hpp"
-#include "foundation/utils.hpp"
 #include "foundation/train/regression_single_pass.hpp"
-
+#include "foundation/utils.hpp"
 
 namespace py = pybind11;
 
@@ -74,68 +73,33 @@ PYBIND11_MODULE(foundation, m) {
   py::module trainMod = m.def_submodule("train", "Train module");
 
   trainMod.def(
-    "train_mse_single_pass", 
-    [](
-      CompiledGraphWrapper& graph,
-      std::vector<py::array> input,
-      std::vector<py::array> target,
-      int num_epochs,
-      double learning_rate
-    ) {
-      auto torch_inputs = from_numpy_vec(input);
-      auto torch_targets = from_numpy_vec(target);
+      "train_mse_single_pass",
+      [](CompiledGraphWrapper &graph, std::vector<py::array> input, std::vector<py::array> target, int num_epochs,
+         double learning_rate) {
+        auto torch_inputs = from_numpy_vec(input);
+        auto torch_targets = from_numpy_vec(target);
 
-      // Call the C++ function
-      train_mse_single_pass(
-        &graph.compiled_graph, 
-        torch_inputs, 
-        torch_targets,
-        num_epochs, 
-        learning_rate
-      );
-    },
-    py::arg("graph"),
-    py::arg("input"),
-    py::arg("target"),
-    py::arg("num_epochs"),
-    py::arg("learning_rate"),
-    "Train a model using MSE loss"
-  );
+        // Call the C++ function
+        train_mse_single_pass(&graph.compiled_graph, torch_inputs, torch_targets, num_epochs, learning_rate);
+      },
+      py::arg("graph"), py::arg("input"), py::arg("target"), py::arg("num_epochs"), py::arg("learning_rate"),
+      "Train a model using MSE loss");
 
   trainMod.def(
-    "train_population", 
-    [](
-      std::vector<CompiledGraphWrapper>& population,
-      std::vector<py::array> input,
-      std::vector<py::array> target,
-      int num_epochs,
-      std::vector<double> learning_rates,
-      int num_threads
-    ) {
-      auto torch_inputs = from_numpy_vec(input);
-      auto torch_targets = from_numpy_vec(target);
+      "train_population",
+      [](std::vector<CompiledGraphWrapper> &population, std::vector<py::array> input, std::vector<py::array> target,
+         int num_epochs, std::vector<double> learning_rates, int num_threads) {
+        auto torch_inputs = from_numpy_vec(input);
+        auto torch_targets = from_numpy_vec(target);
 
-      std::vector<graph::CompiledGraph*> compiled_population;
-      for(auto& model : population) {
-        compiled_population.push_back(&model.compiled_graph);
-      }
+        std::vector<graph::CompiledGraph *> compiled_population;
+        for (auto &model : population) {
+          compiled_population.push_back(&model.compiled_graph);
+        }
 
-      // Call the C++ function
-      train_population(
-        compiled_population, 
-        torch_inputs, 
-        torch_targets,
-        num_epochs, 
-        learning_rates,
-        num_threads
-      );
-    },
-    py::arg("population"),
-    py::arg("input"),
-    py::arg("target"),
-    py::arg("num_epochs"),
-    py::arg("learning_rate"),
-    py::arg("num_threads"),
-    "Train a population of models"
-  );
+        // Call the C++ function
+        train_population(compiled_population, torch_inputs, torch_targets, num_epochs, learning_rates, num_threads);
+      },
+      py::arg("population"), py::arg("input"), py::arg("target"), py::arg("num_epochs"), py::arg("learning_rate"),
+      py::arg("num_threads"), "Train a population of models");
 }

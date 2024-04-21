@@ -19,24 +19,20 @@
 # %autoreload 2
 import math
 from datetime import datetime
-from itertools import repeat
 from pathlib import Path
 from timeit import default_timer
 
 import matplotlib.pyplot as plt
 import numpy as np
+import project.foundation.graph as cpp_graph_
 import project.graph.compiled as compiled_
 import project.graph.graph as graph_
-from einops import rearrange
-import multiprocessing as mp
 from IPython.display import display
 from project.evolution.initialize import initialize_population
 from project.evolution.select_and_mutate import select_and_mutate
+from project.foundation.train import train_mse_single_pass, train_population
 from project.type_defs import EvolutionConfig
 from project.utils.paths import get_results_dir
-from project.foundation.train import train_mse_single_pass, train_population
-import project.foundation.graph as cpp_graph_
-from tqdm import tqdm
 
 # %%
 evolution_config = EvolutionConfig(
@@ -48,7 +44,7 @@ evolution_config = EvolutionConfig(
     num_edges_weight=1e-4,
     num_parameters_weight=1e-4,
     softmax_temp=0.2,
-    max_num_subgraphs=0
+    max_num_subgraphs=0,
 )
 
 # %%
@@ -103,13 +99,7 @@ plt.plot(x, out[0])
 out
 
 # %%
-train_mse_single_pass(
-    graph=comp_cpp,
-    input=[x],
-    target=[y],
-    num_epochs=1000,
-    learning_rate=1e-3
-)
+train_mse_single_pass(graph=comp_cpp, input=[x], target=[y], num_epochs=1000, learning_rate=1e-3)
 
 # %%
 comp_cpp.forward([x])
@@ -117,11 +107,11 @@ comp_cpp.forward([x])
 
 # %%
 def evaluate_net(
-    graph_net: graph_.Graph, 
-    compiled_net: cpp_graph_.CompiledGraph, 
-    x: np.ndarray, 
+    graph_net: graph_.Graph,
+    compiled_net: cpp_graph_.CompiledGraph,
+    x: np.ndarray,
     y: np.ndarray,
-    evolution_config: EvolutionConfig
+    evolution_config: EvolutionConfig,
 ):
     output = compiled_net.forward([x])
     loss = np.mean((output[0] - y) ** 2)
@@ -137,20 +127,20 @@ def evaluate_net(
 
 # %%
 
+
 def replace_invalid_with_high(values, high_value=100):
     return [high_value if math.isinf(x) or math.isnan(x) else x for x in values]
 
 
 def evaluate_population(population, evolution_config):
-
     compiled_population = [compiled_.to_cpp_compiled(individual.graph) for individual in population]
     learning_rates = [float(individual.training_hp.lr) for individual in population]
 
     train_start = default_timer()
     train_population(
-        compiled_population, 
-        [x], 
-        [y], 
+        compiled_population,
+        [x],
+        [y],
         evolution_config.num_epochs_training,
         learning_rates,
         12,
@@ -161,7 +151,6 @@ def evaluate_population(population, evolution_config):
     out = []
     for individual, compiled in zip(population, compiled_population):
         out.append(evaluate_net(individual.graph, compiled, x, y, evolution_config))
-
 
     fitness_scores, y_hats = zip(*out)
 
@@ -238,7 +227,7 @@ def evolve(population, iterations, evolution_config, path: Path | None = None):
 
         select_and_mutate_start = default_timer()
         new_population, recombination_probs = select_and_mutate(population, fitness_scores, evolution_config)
-        select_and_mutate_end  = default_timer()
+        select_and_mutate_end = default_timer()
         print("Time taken to select and mutate: {}".format(select_and_mutate_end - select_and_mutate_start))
 
         report_start = default_timer()

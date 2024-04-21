@@ -20,7 +20,7 @@ def check_in_repo() -> None:
     assert Path(".git").exists(), "This command should run in repo root."
 
 
-def build(debug:bool = False) -> None:
+def build(debug: bool = False) -> None:
     """(Re)build the C++ backend."""
     check_in_repo()
 
@@ -31,14 +31,7 @@ def build(debug:bool = False) -> None:
     if debug:
         build_type = "Debug"
 
-    subprocess.run([
-        "cmake", 
-        "-B",
-        str(build_path), 
-        "-G", 
-        "Ninja", 
-        f"-DCMAKE_BUILD_TYPE={build_type}"
-    ], check=True)
+    subprocess.run(["cmake", "-B", str(build_path), "-G", "Ninja", f"-DCMAKE_BUILD_TYPE={build_type}"], check=True)
 
     subprocess.run(["ninja", "-C", str(build_path)])
 
@@ -70,17 +63,19 @@ def clean() -> None:
         deploy_path.unlink()
 
 
-def clean_build(debug: bool=False) -> None:
+def clean_build(debug: bool = False) -> None:
     """First clean and then build."""
     clean()
     build(debug=debug)
 
 
 if __name__ == "__main__":
-    Fire({
-        "build": partial(build, debug=False), 
-        "build_debug": partial(build, debug=True),
-        "clean": clean, 
-        "clean_build": partial(clean_build, debug=False),
-        "clean_build_debug": partial(clean_build, debug=True)
-    })
+    Fire(
+        {
+            "build": partial(build, debug=False),
+            "build_debug": partial(build, debug=True),
+            "clean": clean,
+            "clean_build": partial(clean_build, debug=False),
+            "clean_build_debug": partial(clean_build, debug=True),
+        }
+    )

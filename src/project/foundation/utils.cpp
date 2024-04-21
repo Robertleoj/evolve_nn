@@ -1,7 +1,7 @@
+#include "foundation/utils.hpp"
 #include <pybind11/numpy.h>
 #include <pybind11/pybind11.h>
 #include <torch/torch.h>
-#include "foundation/utils.hpp"
 
 namespace py = pybind11;
 
@@ -40,41 +40,34 @@ std::vector<torch::Tensor> from_numpy_vec(std::vector<py::array> inp) {
 }
 
 py::array to_numpy(torch::Tensor inp) {
-    // Ensure the Tensor is in CPU memory and is contiguous
-    inp = inp.contiguous();
+  // Ensure the Tensor is in CPU memory and is contiguous
+  inp = inp.contiguous();
 
-    // Detect the data type of the tensor
-    py::dtype dtype;
-    switch (inp.scalar_type()) {
-        case torch::kDouble:
-            dtype = py::dtype::of<double>();
-            break;
-        case torch::kFloat:
-            dtype = py::dtype::of<float>();
-            break;
-        case torch::kInt32:
-            dtype = py::dtype::of<int>();
-            break;
-        default:
-            throw std::runtime_error("Unsupported tensor dtype");
-    }
+  // Detect the data type of the tensor
+  py::dtype dtype;
+  switch (inp.scalar_type()) {
+  case torch::kDouble:
+    dtype = py::dtype::of<double>();
+    break;
+  case torch::kFloat:
+    dtype = py::dtype::of<float>();
+    break;
+  case torch::kInt32:
+    dtype = py::dtype::of<int>();
+    break;
+  default:
+    throw std::runtime_error("Unsupported tensor dtype");
+  }
 
-    // Calculate the strides for the numpy array in bytes
-    std::vector<ssize_t> strides(inp.strides().size());
-    for (size_t i = 0; i < strides.size(); ++i) {
-        strides[i] = inp.strides()[i] * inp.element_size();
-    }
+  // Calculate the strides for the numpy array in bytes
+  std::vector<ssize_t> strides(inp.strides().size());
+  for (size_t i = 0; i < strides.size(); ++i) {
+    strides[i] = inp.strides()[i] * inp.element_size();
+  }
 
-
-    // Create the numpy array with no additional copying
-    return py::array(
-        dtype, 
-        inp.sizes(), 
-        strides,
-        inp.data_ptr()
-    );
+  // Create the numpy array with no additional copying
+  return py::array(dtype, inp.sizes(), strides, inp.data_ptr());
 }
-
 
 std::vector<py::array> to_numpy_vec(std::vector<torch::Tensor> &inp) {
   std::vector<py::array> out;
