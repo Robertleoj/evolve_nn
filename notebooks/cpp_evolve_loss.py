@@ -27,7 +27,7 @@ from project.tasks.one_d_regression import get_init_spec, evolve, generate_targe
 evolution_config = EvolutionConfig(
     mutate_num_mutations=False,
     max_num_mutations=5,
-    population_size=1000,
+    population_size=5000,
     top_k_stay=3,
     num_epochs_training=500,
     num_edges_weight=2e-5,
