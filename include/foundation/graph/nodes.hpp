@@ -99,5 +99,15 @@ public:
   virtual std::shared_ptr<OpNodeMod> get_op() override;
 };
 
+class SquareMod : public OpNodeMod {
+public:
+  virtual torch::Tensor forward(std::vector<torch::Tensor> inputs) override;
+};
+
+class SquareNode : public OperatorNode {
+public:
+  virtual std::shared_ptr<OpNodeMod> get_op() override;
+};
+
 } // namespace graph
 } // namespace foundation

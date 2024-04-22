@@ -46,5 +46,12 @@ torch::Tensor ExpMod::forward(std::vector<torch::Tensor> inputs) { return torch:
 
 std::shared_ptr<OpNodeMod> ExpNode::get_op() { return std::make_shared<ExpMod>(); }
 
+// SquareMod implementation
+torch::Tensor SquareMod::forward(std::vector<torch::Tensor> inputs) { return inputs[0] * inputs[0]; }
+
+std::shared_ptr<OpNodeMod> SquareNode::get_op() { return std::make_shared<SquareMod>(); }
+
+
+
 } // namespace graph
 } // namespace foundation

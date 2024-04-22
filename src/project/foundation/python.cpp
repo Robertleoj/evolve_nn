@@ -63,6 +63,8 @@ PYBIND11_MODULE(foundation, m) {
 
   py::class_<ExpNode, OperatorNode, std::shared_ptr<ExpNode>>(graphMod, "ExpNode").def(py::init<>());
 
+  py::class_<SquareNode, OperatorNode, std::shared_ptr<SquareNode>>(graphMod, "SquareNode").def(py::init<>());
+
   py::class_<CompiledGraphWrapper>(graphMod, "CompiledGraph")
       .def(py::init<std::vector<std::shared_ptr<Node>>, std::vector<std::vector<int>>, std::vector<int>,
                     std::vector<int>, std::optional<std::vector<int>>, std::optional<int>>(),

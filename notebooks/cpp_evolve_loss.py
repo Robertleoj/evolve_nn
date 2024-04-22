@@ -39,16 +39,16 @@ from project.utils.paths import get_results_dir
 evolution_config = EvolutionConfig(
     mutate_num_mutations=False,
     max_num_mutations=2,
-    population_size=200,
-    top_k_stay=20,
-    num_epochs_training=500,
-    num_edges_weight=2e-4,
-    num_parameters_weight=2e-4,
-    # num_edges_weight=2e-3,
-    # num_parameters_weight=2e-3,
+    population_size=500,
+    top_k_stay=3,
+    num_epochs_training=200,
+    # num_edges_weight=2e-4,
+    # num_parameters_weight=2e-4,
+    num_edges_weight=2e-3,
+    num_parameters_weight=2e-3,
     # num_edges_weight=0,
     # num_parameters_weight=0,
-    softmax_temp=0.2,
+    softmax_temp=1.0,
     max_num_subgraphs=0,
 )
 
@@ -136,8 +136,8 @@ def evaluate_net(
 # %%
 
 
-def replace_invalid_with_high(values, high_value=100):
-    return [high_value if math.isinf(x) or math.isnan(x) else x for x in values]
+def replace_invalid_with_high(values, high_value=20):
+    return [high_value if math.isinf(x) or math.isnan(x) else min(x, high_value) for x in values]
 
 
 def evaluate_population(population, x, targets, evolution_config):
@@ -177,7 +177,7 @@ def evaluate_population(population, x, targets, evolution_config):
         fitness_scores_all.append(fitness_scores)
         y_hat_all.append(y_hats)
 
-    fitness_scores = np.mean(fitness_scores_all, axis=0)
+    fitness_scores = np.mean(np.array(fitness_scores_all), axis=0)
 
     return fitness_scores, y_hat_all
 
@@ -186,7 +186,7 @@ def evaluate_population(population, x, targets, evolution_config):
 
 
 def report_data(
-    population, fitness_scores, target, y_hats, recombination_probs, folder_path: Path, generation: int
+    population, fitness_scores, x, target, y_hats, recombination_probs, folder_path: Path, generation: int
 ) -> None:
     generation_path = folder_path / f"generation_{generation}"
     generation_path.mkdir(parents=True, exist_ok=True)
@@ -227,6 +227,13 @@ def report_data(
     plt.show()
     plt.close(fig)
 
+    # plot fitness scores
+    fig, ax = plt.subplots()
+    ax.bar(range(len(fitness_scores)), sorted(fitness_scores))
+    plt.savefig(generation_path / "fitness_scores.png")
+    plt.show()
+    plt.close(fig)
+
 
 def generate_folder_name() -> str:
     current_time = datetime.now()
@@ -255,7 +262,7 @@ def evolve(population, iterations, evolution_config, x, path: Path | None = None
 
         if i % 1 == 0:
             report_start = default_timer()
-            report_data(population, fitness_scores, targets, y_hats, recombination_probs, path, i)
+            report_data(population, fitness_scores, x, targets, y_hats, recombination_probs, path, i)
             report_end = default_timer()
             print("Time taken to report data: {}".format(report_end - report_start))
 

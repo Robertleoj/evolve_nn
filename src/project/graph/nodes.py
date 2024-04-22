@@ -159,6 +159,20 @@ class ExpNode(OperatorNode):
         """Perform the exp operation."""
         return ExpMod()
 
+class SquareMod(NumpyModule):
+    def __call__(self, inp: list[np.ndarray]) -> np.ndarray:
+        return inp[0] ** 2
+
+
+class SquareNode(OperatorNode):
+    """A node that applies the exp function."""
+
+    name = "square"
+    n_inputs = (1, 1)
+
+    def get_op(self) -> NumpyModule:
+        """Perform the exp operation."""
+        return SquareMod()
 
 class SubGraphNode(OperatorNode):
     """A node that represents a subgraph."""
@@ -179,6 +193,7 @@ op_nodes: list[type[OperatorNode]] = [
     AddNode,
     NegNode,
     ProdNode,
+    SquareNode,
     # GELUNode,
     # ExpNode,
     SubGraphNode,
@@ -242,5 +257,7 @@ def to_cpp_node(node: Node) -> cpp_graph.Node:
             return cpp_graph.LogNode()
         case "exp":
             return cpp_graph.ExpNode()
+        case "square":
+            return cpp_graph.SquareNode()
         case _:
             raise ValueError(f"Unknown node name: {node.name}")
