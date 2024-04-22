@@ -40,7 +40,6 @@ class Graph:
     is_subgraph: bool = False
     ordered_respone_input_nodes: list[str] | None
     loss_output_node: str | None
-    is_subgraph: bool = False
 
     def __init__(
         self,

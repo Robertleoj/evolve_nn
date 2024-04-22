@@ -1,14 +1,14 @@
 from __future__ import annotations
 
 import math
-
+import project.foundation.graph as cpp_graph_
 import project.graph.graph as graph_
 import project.graph.nodes as nodes_
 import project.utils.graph_utils as graph_utils_
-import torch
-import torch.nn as nn
 from graphviz import Digraph
 from IPython.display import SVG, display
+import torch
+import torch.nn as nn
 
 
 class CompiledGraph(nn.Module):
@@ -76,6 +76,7 @@ class CompiledGraph(nn.Module):
 
         self.stored_modules = nn.ModuleDict()
         self.stored_parameters = nn.ParameterDict()
+
         self.input_nodes = []
         self.output_nodes = []
         self.response_input_nodes = []
@@ -84,7 +85,7 @@ class CompiledGraph(nn.Module):
                 self.stored_modules[str(node_id)] = node.get_op()
 
             if isinstance(node, nodes_.ParameterNode):
-                self.stored_parameters[str(node_id)] = nn.Parameter(torch.empty(1))
+                self.stored_parameters[str(node_id)] = torch.zeros((1,))
 
             if isinstance(node, nodes_.InputNode):
                 self.input_nodes.append(node_id)
@@ -104,7 +105,7 @@ class CompiledGraph(nn.Module):
     def reset_parameters(self) -> None:
         """Reset the parameters of the graph."""
         for param in self.stored_parameters.values():
-            nn.init.normal_(param, mean=0, std=1 / math.sqrt(2))
+            nn.init.normal_(param)
 
     def nuke_data(self) -> None:
         """Reset the data of the graph."""
@@ -243,9 +244,9 @@ def show_compiled(graph: CompiledGraph, use_regular: bool = True) -> None:
     for node_idx, node in enumerate(graph.nodes):
         label = node.name
         if isinstance(node, nodes_.DataNode):
-            dot.node(str(node_idx), label=label)
+            dot.node(node_idx, label=label)
         elif isinstance(node, nodes_.OperatorNode):
-            dot.node(str(node_idx), label=label, shape="box")
+            dot.node(node_idx, label=label, shape="box")
 
     for to_idx, from_indices in enumerate(graph.rev_adjacency_list):
         for from_idx in from_indices:
@@ -264,3 +265,17 @@ class SubCompiledGraph(CompiledGraph):
     def forward(self, inputs: list[torch.Tensor]) -> torch.Tensor:  # type: ignore
         outputs = super().forward(inputs)
         return outputs[0]
+
+
+def to_cpp_compiled(graph: graph_.Graph) -> cpp_graph_.CompiledGraph:
+    compiled_graph = CompiledGraph.from_graph(graph)
+    cpp_nodes = [nodes_.to_cpp_node(node) for node in compiled_graph.nodes]
+
+    return cpp_graph_.CompiledGraph(
+        cpp_nodes,
+        compiled_graph.rev_adjacency_list,
+        input_order=compiled_graph.input_nodes,
+        output_order=compiled_graph.output_nodes,
+        response_order=compiled_graph.response_input_nodes,
+        loss_node=compiled_graph.loss_output_node,
+    )

@@ -1,6 +1,8 @@
 """Useful types."""
 from dataclasses import dataclass
 
+import numpy as np
+
 
 @dataclass
 class EvolutionConfig:
@@ -33,3 +35,10 @@ class TrainingHP:
 
     lr: float
     momentum: float
+
+
+class NumpyModule:
+    """A module that takes a list of numpy arrays and returns a numpy array."""
+
+    def __call__(self, args: list[np.ndarray]) -> np.ndarray:
+        raise NotImplementedError

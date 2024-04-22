@@ -3,11 +3,11 @@ from __future__ import annotations
 import math
 from typing import Any
 
+import project.foundation.graph as cpp_graph
 import project.graph.compiled as compiled_
 import project.graph.graph as graph_
 import torch
 import torch.nn as nn
-
 
 class Node:
     """Base class for all nodes in the graph."""
@@ -52,12 +52,7 @@ class ParameterNode(DataNode):
 
 # operator nodes
 class OperatorNode(Node):
-    """A node that represents an operation.
-
-    Attributes:
-        input_shapes: Shapes of the input tensors.
-        output_shapes: Shapes of the output tensors.
-    """
+    """A node that represents an operation."""
 
     n_inputs: tuple[int, int | None]
     inputs_ordered: bool = False
@@ -68,7 +63,7 @@ class OperatorNode(Node):
 
 
 class AddMod(nn.Module):
-    def forward(self, inp: list[torch.Tensor]) -> torch.Tensor:
+    def __call__(self, inp: list[torch.Tensor]) -> torch.Tensor:
         return sum(inp)  # type: ignore
 
 
@@ -84,7 +79,7 @@ class AddNode(OperatorNode):
 
 
 class NegMod(nn.Module):
-    def forward(self, inp: list[torch.Tensor]) -> torch.Tensor:
+    def __call__(self, inp: list[torch.Tensor]) -> torch.Tensor:
         return -inp[0]
 
 
@@ -100,7 +95,7 @@ class NegNode(OperatorNode):
 
 
 class ProdMod(nn.Module):
-    def forward(self, inp: list[torch.Tensor]) -> torch.Tensor:
+    def __call__(self, inp: list[torch.Tensor]) -> torch.Tensor:
         return math.prod(inp)
 
 
@@ -116,7 +111,7 @@ class ProdNode(OperatorNode):
 
 
 class GELUMod(nn.Module):
-    def forward(self, inp: list[torch.Tensor]) -> torch.Tensor:
+    def __call__(self, inp: list[torch.Tensor]) -> torch.Tensor:
         return nn.functional.gelu(inp[0])
 
 
@@ -132,7 +127,7 @@ class GELUNode(OperatorNode):
 
 
 class LogMod(nn.Module):
-    def forward(self, inp: list[torch.Tensor]) -> torch.Tensor:
+    def __call__(self, inp: list[torch.Tensor]) -> torch.Tensor:
         return torch.log(inp[0])
 
 
@@ -149,7 +144,7 @@ class LogNode(OperatorNode):
 
 
 class ExpMod(nn.Module):
-    def forward(self, inp: list[torch.Tensor]) -> torch.Tensor:
+    def __call__(self, inp: list[torch.Tensor]) -> torch.Tensor:
         return torch.exp(inp[0])
 
 
@@ -162,6 +157,22 @@ class ExpNode(OperatorNode):
     def get_op(self) -> nn.Module:
         """Perform the exp operation."""
         return ExpMod()
+
+
+class SquareMod(nn.Module):
+    def __call__(self, inp: list[torch.Tensor]) -> torch.Tensor:
+        return inp[0] ** 2
+
+
+class SquareNode(OperatorNode):
+    """A node that applies the exp function."""
+
+    name = "square"
+    n_inputs = (1, 1)
+
+    def get_op(self) -> nn.Module:
+        """Perform the exp operation."""
+        return SquareMod()
 
 
 class SubGraphNode(OperatorNode):
@@ -179,7 +190,15 @@ class SubGraphNode(OperatorNode):
         return compiled_.SubCompiledGraph.from_graph(self.subgraph)
 
 
-op_nodes: list[type[OperatorNode]] = [AddNode, NegNode, ProdNode, GELUNode, ExpNode, SubGraphNode]
+op_nodes: list[type[OperatorNode]] = [
+    AddNode,
+    NegNode,
+    ProdNode,
+    SquareNode,
+    # GELUNode,
+    # ExpNode,
+    SubGraphNode,
+]
 
 data_nodes: list[type[DataNode]] = [
     InputNode,
@@ -213,3 +232,33 @@ def node_from_spec(spec: dict[str, Any]) -> Node:
     if "args" in spec:
         return node(**spec["args"])
     return node()
+
+
+def to_cpp_node(node: Node) -> cpp_graph.Node:
+    match node.name:
+        case "input":
+            return cpp_graph.InputNode()
+        case "response_input":
+            return cpp_graph.ResponseInputNode()
+        case "output":
+            return cpp_graph.OutputNode()
+        case "loss_output":
+            return cpp_graph.LossOutputNode()
+        case "parameter":
+            return cpp_graph.ParameterNode()
+        case "add":
+            return cpp_graph.AddNode()
+        case "neg":
+            return cpp_graph.NegNode()
+        case "prod":
+            return cpp_graph.ProdNode()
+        case "GELU":
+            return cpp_graph.GELUNode()
+        case "log":
+            return cpp_graph.LogNode()
+        case "exp":
+            return cpp_graph.ExpNode()
+        case "square":
+            return cpp_graph.SquareNode()
+        case _:
+            raise ValueError(f"Unknown node name: {node.name}")
