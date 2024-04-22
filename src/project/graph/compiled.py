@@ -1,18 +1,17 @@
 from __future__ import annotations
 
 import math
-
-import numpy as np
 import project.foundation.graph as cpp_graph_
 import project.graph.graph as graph_
 import project.graph.nodes as nodes_
 import project.utils.graph_utils as graph_utils_
 from graphviz import Digraph
 from IPython.display import SVG, display
-from project.type_defs import NumpyModule
+import torch
+import torch.nn as nn
 
 
-class CompiledGraph:
+class CompiledGraph(nn.Module):
     """Compiled graph for inference and training.
 
     Attributes:
@@ -30,9 +29,9 @@ class CompiledGraph:
     output_nodes: list[int]
     response_input_nodes: list[int]
     loss_output_node: int
-    stored_modules: dict[int, NumpyModule]
-    stored_parameters: dict[int, np.ndarray]
-    curr_data: list[None | np.ndarray] | None
+    stored_modules: nn.ModuleDict
+    stored_parameters: nn.ParameterDict
+    curr_data: list[None | torch.Tensor] | None
     is_subgraph: bool = False
     graph: graph_.Graph
 
@@ -75,17 +74,18 @@ class CompiledGraph:
 
         self.rev_adjacency_list = sorted_rev_adj_list
 
-        self.stored_modules = {}
-        self.stored_parameters = {}
+        self.stored_modules = nn.ModuleDict()
+        self.stored_parameters = nn.ParameterDict()
+
         self.input_nodes = []
         self.output_nodes = []
         self.response_input_nodes = []
         for node_id, node in enumerate(self.nodes):
             if isinstance(node, nodes_.OperatorNode):
-                self.stored_modules[node_id] = node.get_op()
+                self.stored_modules[str(node_id)] = node.get_op()
 
             if isinstance(node, nodes_.ParameterNode):
-                self.stored_parameters[node_id] = np.zeros((1,))
+                self.stored_parameters[str(node_id)] = torch.zeros((1,))
 
             if isinstance(node, nodes_.InputNode):
                 self.input_nodes.append(node_id)
@@ -105,7 +105,7 @@ class CompiledGraph:
     def reset_parameters(self) -> None:
         """Reset the parameters of the graph."""
         for param in self.stored_parameters.values():
-            param[...] = np.random.randn(*param.shape) / math.sqrt(2)
+            nn.init.normal_(param)
 
     def nuke_data(self) -> None:
         """Reset the data of the graph."""
@@ -141,7 +141,7 @@ class CompiledGraph:
 
         return cls(nodes=nodes, rev_adjacency_list=idx_rev_edge_list, parent_graph=graph)
 
-    def forward(self, inputs: list[np.array]) -> list[np.array]:
+    def forward(self, inputs: list[torch.Tensor]) -> list[torch.Tensor]:
         """Perform inference on the compiled graph.
 
         Args:
@@ -166,7 +166,7 @@ class CompiledGraph:
 
                 self.infer_node(node_id)
 
-            output: list[np.ndarray] = []
+            output: list[torch.Tensor] = []
             for node_id in self.output_nodes:
                 data = self.curr_data[node_id]
                 assert data is not None, f"Output node {node_id} has not been inferred."
@@ -212,10 +212,10 @@ class CompiledGraph:
 
                 input_data.append(inp_data)
 
-            op = self.stored_modules[node_id]
+            op = self.stored_modules[str(node_id)]
             self.curr_data[node_id] = op(input_data)
 
-    def response_forward(self, inputs: list[np.ndarray]) -> np.ndarray:
+    def response_forward(self, inputs: list[torch.Tensor]) -> torch.Tensor:
         assert not self.is_subgraph, "response_forward should only be called on the top-level graph."
         assert self.curr_data is not None, "Data has not been initialized."
 

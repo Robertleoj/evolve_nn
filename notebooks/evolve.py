@@ -46,17 +46,20 @@ evolution_config = EvolutionConfig(
     num_edges_weight=1e-4,
     num_parameters_weight=1e-4,
     softmax_temp=0.2,
+    max_num_subgraphs=0
 )
 
 # %%
 init_spec = {
     "node_specs": [
         {"name": "input"},
+        {'name': "parameter"},
+        {"name": "add"},
         {"name": "output"},
     ],
-    "rev_adj_list": [[], [0]],
+    "rev_adj_list": [[], [], [0, 1], [2]],
     "input_node_order": [0],
-    "output_node_order": [1],
+    "output_node_order": [3],
 }
 
 
@@ -238,3 +241,5 @@ population = initialize_population(init_spec, evolution_config)
 # %%
 evolved = evolve(population, 1000, evolution_config)
 population = [individual for _, individual, _ in evolved]
+
+# %%

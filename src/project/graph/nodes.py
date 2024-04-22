@@ -3,12 +3,11 @@ from __future__ import annotations
 import math
 from typing import Any
 
-import numpy as np
 import project.foundation.graph as cpp_graph
 import project.graph.compiled as compiled_
 import project.graph.graph as graph_
-from project.type_defs import NumpyModule
-
+import torch
+import torch.nn as nn
 
 class Node:
     """Base class for all nodes in the graph."""
@@ -58,13 +57,13 @@ class OperatorNode(Node):
     n_inputs: tuple[int, int | None]
     inputs_ordered: bool = False
 
-    def get_op(self) -> NumpyModule:
+    def get_op(self) -> nn.Module:
         """Perform the operation."""
         raise NotImplementedError
 
 
-class AddMod(NumpyModule):
-    def __call__(self, inp: list[np.ndarray]) -> np.ndarray:
+class AddMod(nn.Module):
+    def __call__(self, inp: list[torch.Tensor]) -> torch.Tensor:
         return sum(inp)  # type: ignore
 
 
@@ -74,13 +73,13 @@ class AddNode(OperatorNode):
     name = "add"
     n_inputs = (2, None)
 
-    def get_op(self) -> NumpyModule:
+    def get_op(self) -> nn.Module:
         """Perform the addition operation."""
         return AddMod()
 
 
-class NegMod(NumpyModule):
-    def __call__(self, inp: list[np.ndarray]) -> np.ndarray:
+class NegMod(nn.Module):
+    def __call__(self, inp: list[torch.Tensor]) -> torch.Tensor:
         return -inp[0]
 
 
@@ -90,13 +89,13 @@ class NegNode(OperatorNode):
     name = "neg"
     n_inputs = (1, 1)
 
-    def get_op(self) -> NumpyModule:
+    def get_op(self) -> nn.Module:
         """Perform the negation operation."""
         return NegMod()
 
 
-class ProdMod(NumpyModule):
-    def __call__(self, inp: list[np.ndarray]) -> np.ndarray:
+class ProdMod(nn.Module):
+    def __call__(self, inp: list[torch.Tensor]) -> torch.Tensor:
         return math.prod(inp)
 
 
@@ -106,14 +105,14 @@ class ProdNode(OperatorNode):
     name = "prod"
     n_inputs = (2, None)
 
-    def get_op(self) -> NumpyModule:
+    def get_op(self) -> nn.Module:
         """Perform the multiplication operation."""
         return ProdMod()
 
 
-class GELUMod(NumpyModule):
-    def __call__(self, inp: list[np.ndarray]) -> np.ndarray:
-        return 0.5 * inp[0] * (1 + np.tanh(math.sqrt(2 / math.pi) * (inp[0] + 0.044715 * inp[0] ** 3)))
+class GELUMod(nn.Module):
+    def __call__(self, inp: list[torch.Tensor]) -> torch.Tensor:
+        return nn.functional.gelu(inp[0])
 
 
 class GELUNode(OperatorNode):
@@ -122,14 +121,14 @@ class GELUNode(OperatorNode):
     name = "GELU"
     n_inputs = (1, 1)
 
-    def get_op(self) -> NumpyModule:
+    def get_op(self) -> nn.Module:
         """Perform the ReLu operation."""
         return GELUMod()
 
 
-class LogMod(NumpyModule):
-    def __call__(self, inp: list[np.ndarray]) -> np.ndarray:
-        return np.log(inp[0])
+class LogMod(nn.Module):
+    def __call__(self, inp: list[torch.Tensor]) -> torch.Tensor:
+        return torch.log(inp[0])
 
 
 class LogNode(OperatorNode):
@@ -139,14 +138,14 @@ class LogNode(OperatorNode):
 
     n_inputs = (1, 1)
 
-    def get_op(self) -> NumpyModule:
+    def get_op(self) -> nn.Module:
         """Perform the log operation."""
         return LogMod()
 
 
-class ExpMod(NumpyModule):
-    def __call__(self, inp: list[np.ndarray]) -> np.ndarray:
-        return np.exp(inp[0])
+class ExpMod(nn.Module):
+    def __call__(self, inp: list[torch.Tensor]) -> torch.Tensor:
+        return torch.exp(inp[0])
 
 
 class ExpNode(OperatorNode):
@@ -155,13 +154,13 @@ class ExpNode(OperatorNode):
     name = "exp"
     n_inputs = (1, 1)
 
-    def get_op(self) -> NumpyModule:
+    def get_op(self) -> nn.Module:
         """Perform the exp operation."""
         return ExpMod()
 
 
-class SquareMod(NumpyModule):
-    def __call__(self, inp: list[np.ndarray]) -> np.ndarray:
+class SquareMod(nn.Module):
+    def __call__(self, inp: list[torch.Tensor]) -> torch.Tensor:
         return inp[0] ** 2
 
 
@@ -171,7 +170,7 @@ class SquareNode(OperatorNode):
     name = "square"
     n_inputs = (1, 1)
 
-    def get_op(self) -> NumpyModule:
+    def get_op(self) -> nn.Module:
         """Perform the exp operation."""
         return SquareMod()
 
