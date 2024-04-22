@@ -37,10 +37,13 @@ evolution_config = EvolutionConfig(
 )
 
 # %%
-init_spec = get_init_spec()
+evolve_loss = False
+
+# %%
+init_spec = get_init_spec(evolve_loss=False)
 population = initialize_population(init_spec, evolution_config)
 
 # %%
 x = np.linspace(0, 1, 100)
-evolved = evolve(population, 1000, evolution_config, x)
+evolved = evolve(population, 1000, evolution_config, x, evolve_loss=evolve_loss)
 population = [individual for _, individual, _ in evolved]

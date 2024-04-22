@@ -28,7 +28,7 @@ class CompiledGraph(nn.Module):
     input_nodes: list[int]
     output_nodes: list[int]
     response_input_nodes: list[int]
-    loss_output_node: int
+    loss_output_node: int | None
     stored_modules: nn.ModuleDict
     stored_parameters: nn.ParameterDict
     curr_data: list[None | torch.Tensor] | None
@@ -80,6 +80,7 @@ class CompiledGraph(nn.Module):
         self.input_nodes = []
         self.output_nodes = []
         self.response_input_nodes = []
+        self.loss_output_node = None
         for node_id, node in enumerate(self.nodes):
             if isinstance(node, nodes_.OperatorNode):
                 self.stored_modules[str(node_id)] = node.get_op()

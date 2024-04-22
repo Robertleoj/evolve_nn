@@ -7,6 +7,7 @@ from timeit import default_timer
 
 import matplotlib.pyplot as plt
 import numpy as np
+from project.evolution.individual import Individual
 import project.foundation.graph as cpp_graph_
 import project.foundation.train as cpp_train_
 import project.graph.compiled as compiled_
@@ -20,30 +21,48 @@ from project.utils.sequence import replace_invalid_with_high
 
 
 
-def get_init_spec() -> dict[str, Any]:
-    return {
-        "node_specs": [
-            {"name": "input"},
-            {"name": "parameter"},
-            {"name": "add"},
-            {"name": "output"},
-            {"name": "response_input"},
-            {"name": "add"},
-            {"name": "loss_output"},
-        ],
-        "rev_adj_list": [
-            [],  # 0 input
-            [],  # 1 parameter
-            [0, 1],  # 2 add
-            [2],  # 3 output
-            [],  # 4 response_input,
-            [3, 4],  # 5 add
-            [5],  # 6 loss_output
-        ],
-        "input_node_order": [0],
-        "output_node_order": [3],
-        "response_input_node_order": [4],
-    }
+def get_init_spec(evolve_loss=True) -> dict[str, Any]:
+    if evolve_loss:
+        return {
+            "node_specs": [
+                {"name": "input"},
+                {"name": "parameter"},
+                {"name": "add"},
+                {"name": "output"},
+                {"name": "response_input"},
+                {"name": "add"},
+                {"name": "loss_output"},
+            ],
+            "rev_adj_list": [
+                [],  # 0 input
+                [],  # 1 parameter
+                [0, 1],  # 2 add
+                [2],  # 3 output
+                [],  # 4 response_input,
+                [3, 4],  # 5 add
+                [5],  # 6 loss_output
+            ],
+            "input_node_order": [0],
+            "output_node_order": [3],
+            "response_input_node_order": [4],
+        }
+    else:
+        return {
+            "node_specs": [
+                {"name": "input"},
+                {"name": "parameter"},
+                {"name": "add"},
+                {"name": "output"},
+            ],
+            "rev_adj_list": [
+                [],  # 0 input
+                [],  # 1 parameter
+                [0, 1],  # 2 add
+                [2],  # 3 output
+            ],
+            "input_node_order": [0],
+            "output_node_order": [3],
+        }
 
 def generate_target_poly(x: np.ndarray) -> np.ndarray:
     order = random.randint(1, 5)
@@ -91,11 +110,27 @@ def evaluate_net(
 
     return (loss + edge_weight * num_edges + num_parameters_weight * num_parameters), output[0]
 
+
+
+def evaluate_population(
+    population: list[Individual], 
+    x: np.ndarray, 
+    targets: list[np.ndarray], 
+    evolution_config: EvolutionConfig, 
+    evolving_loss: bool = True
+) -> tuple[np.ndarray, list[list[np.ndarray]]]:
+    """Evaluate a population of individuals on a set of targets.
     
-
-
-
-def evaluate_population(population, x, targets, evolution_config):
+    Args:
+        population: The population of individuals to evaluate.
+        x: The input data.
+        targets: The target data.
+        evolution_config: The evolution configuration. 
+        
+    Returns:
+        fitness_scores: a list of fitness scores for each individual.
+        y_hat_all: a list of predictions on each target for each individual.
+    """
     fitness_scores_all = []
     y_hat_all = []
 
@@ -107,14 +142,24 @@ def evaluate_population(population, x, targets, evolution_config):
         learning_rates = [float(individual.training_hp.lr) for individual in population]
 
         train_start = default_timer()
-        cpp_train_.response_regression_train_population(
-            compiled_population,
-            [x],
-            [targ],
-            evolution_config.num_epochs_training,
-            learning_rates,
-            16,
-        )
+        if evolving_loss:
+            cpp_train_.response_regression_train_population(
+                compiled_population,
+                [x],
+                [targ],
+                evolution_config.num_epochs_training,
+                learning_rates,
+                16,
+            )
+        else:
+            cpp_train_.mse_train_population(
+                compiled_population,
+                [x],
+                [targ],
+                evolution_config.num_epochs_training,
+                learning_rates,
+                16
+            )
         train_end = default_timer()
         print("Time taken to train population: {}".format(train_end - train_start))
 
@@ -139,7 +184,14 @@ def evaluate_population(population, x, targets, evolution_config):
     
 
 def report_data(
-    population, fitness_scores, x, target, y_hats, recombination_probs, folder_path: Path, generation: int
+    population: list[Individual], 
+    fitness_scores: np.ndarray, 
+    x: np.ndarray, 
+    target: list[np.ndarray], 
+    y_hats: list[list[np.ndarray]], 
+    recombination_probs: np.ndarray, 
+    folder_path: Path, 
+    generation: int
 ) -> None:
     generation_path = folder_path / f"generation_{generation}"
     generation_path.mkdir(parents=True, exist_ok=True)
@@ -195,7 +247,14 @@ def generate_folder_name() -> str:
 
     
 
-def evolve(population, iterations, evolution_config, x, path: Path | None = None):
+def evolve(
+    population: list[Individual],
+    iterations: int, 
+    evolution_config: EvolutionConfig, 
+    x: np.ndarray,
+    evolve_loss: bool = True,
+    path: Path | None = None,
+) -> None:
     if path is None:
         path = get_results_dir() / generate_folder_name()
         print(path)
@@ -203,17 +262,17 @@ def evolve(population, iterations, evolution_config, x, path: Path | None = None
     for i in range(iterations):
         targets = [generate_target(x) for _ in range(5)]
 
-        fitness_scores, y_hats = evaluate_population(population, x, targets, evolution_config)
+        fitness_scores, y_hats = evaluate_population(population, x, targets, evolution_config, evolving_loss=evolve_loss)
         assert len(fitness_scores) == len(population)
 
         select_and_mutate_start = default_timer()
-        new_population, recombination_probs = select_and_mutate(population, fitness_scores, evolution_config)
+        new_population, recombination_probs = select_and_mutate(population, fitness_scores.tolist(), evolution_config)
         select_and_mutate_end = default_timer()
         print("Time taken to select and mutate: {}".format(select_and_mutate_end - select_and_mutate_start))
 
         if i % 1 == 0:
             report_start = default_timer()
-            report_data(population, fitness_scores, x, targets, y_hats, recombination_probs, path, i)
+            report_data(population, fitness_scores, x, targets, y_hats, np.array(recombination_probs), path, i)
             report_end = default_timer()
             print("Time taken to report data: {}".format(report_end - report_start))
 
