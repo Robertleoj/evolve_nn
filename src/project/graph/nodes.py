@@ -9,6 +9,7 @@ import project.graph.graph as graph_
 import torch
 import torch.nn as nn
 
+
 class Node:
     """Base class for all nodes in the graph."""
 

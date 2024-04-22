@@ -2,23 +2,21 @@ import math
 import random
 from datetime import datetime
 from pathlib import Path
-from typing import Any
 from timeit import default_timer
+from typing import Any, Callable
 
 import matplotlib.pyplot as plt
 import numpy as np
-from project.evolution.individual import Individual
 import project.foundation.graph as cpp_graph_
 import project.foundation.train as cpp_train_
 import project.graph.compiled as compiled_
 import project.graph.graph as graph_
 from IPython.display import display
-from project.evolution.initialize import initialize_population
+from project.evolution.individual import Individual
 from project.evolution.select_and_mutate import select_and_mutate
 from project.type_defs import EvolutionConfig
 from project.utils.paths import get_results_dir
 from project.utils.sequence import replace_invalid_with_high
-
 
 
 def get_init_spec(evolve_loss=True) -> dict[str, Any]:
@@ -64,6 +62,7 @@ def get_init_spec(evolve_loss=True) -> dict[str, Any]:
             "output_node_order": [3],
         }
 
+
 def generate_target_poly(x: np.ndarray) -> np.ndarray:
     order = random.randint(1, 5)
 
@@ -84,13 +83,13 @@ def generate_target_sin(x: np.ndarray) -> np.ndarray:
 
 
 def generate_target(x: np.ndarray) -> np.ndarray:
-
     functions = [
         generate_target_poly,
         generate_target_sin,
     ]
 
     return random.choice(functions)(x) + 0.01 * np.random.randn(*x.shape)
+
 
 def evaluate_net(
     graph_net: graph_.Graph,
@@ -111,22 +110,21 @@ def evaluate_net(
     return (loss + edge_weight * num_edges + num_parameters_weight * num_parameters), output[0]
 
 
-
 def evaluate_population(
-    population: list[Individual], 
-    x: np.ndarray, 
-    targets: list[np.ndarray], 
-    evolution_config: EvolutionConfig, 
-    evolving_loss: bool = True
+    population: list[Individual],
+    x: np.ndarray,
+    targets: list[np.ndarray],
+    evolution_config: EvolutionConfig,
+    evolving_loss: bool = True,
 ) -> tuple[np.ndarray, list[list[np.ndarray]]]:
     """Evaluate a population of individuals on a set of targets.
-    
+
     Args:
         population: The population of individuals to evaluate.
         x: The input data.
         targets: The target data.
-        evolution_config: The evolution configuration. 
-        
+        evolution_config: The evolution configuration.
+
     Returns:
         fitness_scores: a list of fitness scores for each individual.
         y_hat_all: a list of predictions on each target for each individual.
@@ -153,12 +151,7 @@ def evaluate_population(
             )
         else:
             cpp_train_.mse_train_population(
-                compiled_population,
-                [x],
-                [targ],
-                evolution_config.num_epochs_training,
-                learning_rates,
-                16
+                compiled_population, [x], [targ], evolution_config.num_epochs_training, learning_rates, 16
             )
         train_end = default_timer()
         print("Time taken to train population: {}".format(train_end - train_start))
@@ -181,17 +174,16 @@ def evaluate_population(
 
     return fitness_scores, y_hat_all
 
-    
 
 def report_data(
-    population: list[Individual], 
-    fitness_scores: np.ndarray, 
-    x: np.ndarray, 
-    target: list[np.ndarray], 
-    y_hats: list[list[np.ndarray]], 
-    recombination_probs: np.ndarray, 
-    folder_path: Path, 
-    generation: int
+    population: list[Individual],
+    fitness_scores: np.ndarray,
+    x: np.ndarray,
+    target: list[np.ndarray],
+    y_hats: list[list[np.ndarray]],
+    recombination_probs: np.ndarray,
+    folder_path: Path,
+    generation: int,
 ) -> None:
     generation_path = folder_path / f"generation_{generation}"
     generation_path.mkdir(parents=True, exist_ok=True)
@@ -245,24 +237,26 @@ def generate_folder_name() -> str:
     folder_name = current_time.strftime("%Y%m%d_%H%M%S")
     return folder_name
 
-    
 
 def evolve(
     population: list[Individual],
-    iterations: int, 
-    evolution_config: EvolutionConfig, 
+    iterations: int,
+    evolution_config: EvolutionConfig,
     x: np.ndarray,
     evolve_loss: bool = True,
     path: Path | None = None,
+    generate_target_fn: Callable[[np.ndarray], np.ndarray] = generate_target,
 ) -> None:
     if path is None:
         path = get_results_dir() / generate_folder_name()
         print(path)
 
     for i in range(iterations):
-        targets = [generate_target(x) for _ in range(5)]
+        targets = [generate_target_fn(x) for _ in range(5)]
 
-        fitness_scores, y_hats = evaluate_population(population, x, targets, evolution_config, evolving_loss=evolve_loss)
+        fitness_scores, y_hats = evaluate_population(
+            population, x, targets, evolution_config, evolving_loss=evolve_loss
+        )
         assert len(fitness_scores) == len(population)
 
         select_and_mutate_start = default_timer()

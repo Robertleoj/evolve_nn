@@ -46,14 +46,14 @@ evolution_config = EvolutionConfig(
     num_edges_weight=1e-4,
     num_parameters_weight=1e-4,
     softmax_temp=0.2,
-    max_num_subgraphs=0
+    max_num_subgraphs=0,
 )
 
 # %%
 init_spec = {
     "node_specs": [
         {"name": "input"},
-        {'name': "parameter"},
+        {"name": "parameter"},
         {"name": "add"},
         {"name": "output"},
     ],
