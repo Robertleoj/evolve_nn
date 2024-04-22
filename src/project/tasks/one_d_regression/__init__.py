@@ -17,7 +17,11 @@ from project.evolution.select_and_mutate import select_and_mutate
 from project.type_defs import EvolutionConfig
 from project.utils.paths import get_results_dir
 from project.utils.sequence import replace_invalid_with_high
+import os
 
+NUM_CPUS = os.cpu_count()
+
+EARLY_STOP_K = 5
 
 def get_init_spec(evolve_loss=True) -> dict[str, Any]:
     if evolve_loss:
@@ -140,19 +144,9 @@ def evaluate_population(
         learning_rates = [float(individual.training_hp.lr) for individual in population]
 
         train_start = default_timer()
-        if evolving_loss:
-            cpp_train_.response_regression_train_population(
-                compiled_population,
-                [x],
-                [targ],
-                evolution_config.num_epochs_training,
-                learning_rates,
-                16,
-            )
-        else:
-            cpp_train_.mse_train_population(
-                compiled_population, [x], [targ], evolution_config.num_epochs_training, learning_rates, 16
-            )
+        cpp_train_.one_d_regression_train_population(
+            compiled_population, [x], [targ], evolution_config.num_epochs_training, learning_rates, max(NUM_CPUS - 2, 4), evolving_loss, EARLY_STOP_K
+        )
         train_end = default_timer()
         print("Time taken to train population: {}".format(train_end - train_start))
 
