@@ -159,6 +159,7 @@ class ExpNode(OperatorNode):
         """Perform the exp operation."""
         return ExpMod()
 
+
 class SquareMod(NumpyModule):
     def __call__(self, inp: list[np.ndarray]) -> np.ndarray:
         return inp[0] ** 2
@@ -173,6 +174,7 @@ class SquareNode(OperatorNode):
     def get_op(self) -> NumpyModule:
         """Perform the exp operation."""
         return SquareMod()
+
 
 class SubGraphNode(OperatorNode):
     """A node that represents a subgraph."""
