@@ -246,13 +246,14 @@ def evolve(
     evolve_loss: bool = True,
     path: Path | None = None,
     generate_target_fn: Callable[[np.ndarray], np.ndarray] = generate_target,
+    num_targets: int = 5,
 ) -> None:
     if path is None:
         path = get_results_dir() / generate_folder_name()
         print(path)
 
     for i in range(iterations):
-        targets = [generate_target_fn(x) for _ in range(5)]
+        targets = [generate_target_fn(x) for _ in range(num_targets)]
 
         fitness_scores, y_hats = evaluate_population(
             population, x, targets, evolution_config, evolving_loss=evolve_loss
