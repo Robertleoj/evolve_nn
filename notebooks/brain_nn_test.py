@@ -18,10 +18,11 @@
 # %load_ext autoreload
 # %autoreload 2
 import numpy as np
-from project.brain_nn.brain import BrainNode, make_update_weights, make_brain
+from project.brain_nn.brain import BrainNode, make_update_weights, make_brain, show_brain
+from project.brain_nn.evolution.mutations import mutate_brain
 
 # %%
-NUM_TRANSMITTERS = 4
+NUM_TRANSMITTERS = 2
 WEIGHT_UPDATE_RATE = 0.01
 WEIGHT_UPDATE_DEPTH = 2
 
@@ -49,8 +50,41 @@ brain = make_brain(
     num_outputs=1,
     num_response_input_nodes=1,
     num_transmitters=NUM_TRANSMITTERS,
+    update_rate=WEIGHT_UPDATE_RATE,
 )
 
 
 # %%
 brain
+
+# %%
+brain.step(
+    [
+        np.array([0, 0]),
+        np.array([1, 2])
+    ], 
+    [
+        np.array([3, 4]), 
+        np.array([5, 6])
+    ])
+
+# %%
+show_brain(brain)
+
+# %%
+mutated = brain
+
+# %%
+mutated = mutate_brain(mutated)
+show_brain(mutated)
+
+# %%
+mutated.step(
+    [
+        np.array([0, 0]),
+        np.array([1, 2])
+    ], 
+    [
+        np.array([3, 4]), 
+        np.array([5, 6])
+    ])

@@ -1,0 +1,5 @@
+from project.brain_nn.evolution.mutations import mutate_brain
+
+__all__ = [
+    'mutate_brain',
+]
