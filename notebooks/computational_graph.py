@@ -17,8 +17,8 @@
 # %%
 # %load_ext autoreload
 # %autoreload 2
-import project.graph.graph as graph
-import project.graph.nodes as nodes
+import compute_graph.graph.graph as graph
+import compute_graph.graph.nodes as nodes
 import torch
 
 # %%

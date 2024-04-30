@@ -17,7 +17,7 @@ from typing import Any
 from uuid import uuid4
 
 import networkx as nx
-import project.graph.nodes as nodes_
+import compute_graph.graph.nodes as nodes_
 from graphviz import Digraph
 from IPython.display import SVG, display
 

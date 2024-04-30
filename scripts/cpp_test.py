@@ -1,6 +1,6 @@
 import numpy as np
-import project.graph.compiled as compiled_
-import project.graph.graph as graph_
+import compute_graph.graph.compiled as compiled_
+import compute_graph.graph.graph as graph_
 
 init_spec = {
     "node_specs": [

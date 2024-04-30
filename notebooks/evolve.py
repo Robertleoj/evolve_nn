@@ -24,16 +24,16 @@ from pathlib import Path
 from timeit import default_timer
 
 import matplotlib.pyplot as plt
-import project.graph.compiled as compiled_
-import project.graph.graph as graph_
+import compute_graph.graph.compiled as compiled_
+import compute_graph.graph.graph as graph_
 import torch
 import torch.multiprocessing as mp
 from einops import rearrange
 from IPython.display import display
-from project.evolution.initialize import initialize_population
-from project.evolution.select_and_mutate import select_and_mutate
-from project.type_defs import EvolutionConfig
-from project.utils.paths import get_results_dir
+from compute_graph.evolution.initialize import initialize_population
+from compute_graph.evolution.select_and_mutate import select_and_mutate
+from compute_graph.type_defs import EvolutionConfig
+from compute_graph.utils.paths import get_results_dir
 from tqdm import tqdm
 
 # %%

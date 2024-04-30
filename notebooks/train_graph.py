@@ -26,7 +26,7 @@
 import matplotlib.pyplot as plt
 import torch
 from einops import rearrange
-from project.graph.graph import CompiledGraph, make_graph, show_compiled, show_graph
+from compute_graph.graph.graph import CompiledGraph, make_graph, show_compiled, show_graph
 from tqdm import tqdm
 
 # %%

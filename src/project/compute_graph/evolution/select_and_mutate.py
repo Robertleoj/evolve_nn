@@ -2,9 +2,9 @@ import random
 from itertools import cycle
 
 import numpy as np
-from project.evolution.individual import Individual
-from project.type_defs import EvolutionConfig
-from project.variation_ops import mutate_individual, recombine_individuals
+from compute_graph.evolution.individual import Individual
+from compute_graph.type_defs import EvolutionConfig
+from compute_graph.variation_ops import mutate_individual, recombine_individuals
 
 
 def select_and_mutate(

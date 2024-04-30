@@ -1,4 +1,4 @@
-from project.foundation import add
+from compute_graph.foundation import add
 
 
 def test_add() -> None:

@@ -3,9 +3,9 @@ from __future__ import annotations
 import math
 from typing import Any
 
-import project.foundation.graph as cpp_graph
-import project.graph.compiled as compiled_
-import project.graph.graph as graph_
+import compute_graph.foundation.graph as cpp_graph
+import compute_graph.graph.compiled as compiled_
+import compute_graph.graph.graph as graph_
 import torch
 import torch.nn as nn
 

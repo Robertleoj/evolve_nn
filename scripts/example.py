@@ -1,7 +1,7 @@
 import logging
 
 import tyro
-from project.foundation import add
+from compute_graph.foundation import add
 
 logger = logging.getLogger(__name__)
 

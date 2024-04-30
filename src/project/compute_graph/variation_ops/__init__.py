@@ -1,10 +1,10 @@
 import random
 from copy import deepcopy
 
-from project.evolution.individual import Individual
-from project.graph.graph import Graph
-from project.type_defs import EvolutionConfig, GraphMutHP, TrainingHP
-from project.variation_ops.graph_mutation import mutate_graph
+from compute_graph.evolution.individual import Individual
+from compute_graph.graph.graph import Graph
+from compute_graph.type_defs import EvolutionConfig, GraphMutHP, TrainingHP
+from compute_graph.variation_ops.graph_mutation import mutate_graph
 
 
 def mutate_individual(individual: Individual, evolution_config: EvolutionConfig) -> Individual:

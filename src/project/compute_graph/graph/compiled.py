@@ -1,10 +1,10 @@
 from __future__ import annotations
 
 import math
-import project.foundation.graph as cpp_graph_
-import project.graph.graph as graph_
-import project.graph.nodes as nodes_
-import project.utils.graph_utils as graph_utils_
+import compute_graph.foundation.graph as cpp_graph_
+import compute_graph.graph.graph as graph_
+import compute_graph.graph.nodes as nodes_
+import compute_graph.utils.graph_utils as graph_utils_
 from graphviz import Digraph
 from IPython.display import SVG, display
 import torch

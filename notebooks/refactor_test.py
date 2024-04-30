@@ -18,10 +18,10 @@
 # %load_ext autoreload
 # %autoreload 2
 import torch
-from project.evolution.initialize import random_graph_mut_hps, random_individual
-from project.graph.graph import CompiledGraph, OperatorNode, SubGraphNode, make_graph, show_graph
-from project.type_defs import EvolutionConfig
-from project.variation_ops import mutate_graph, mutate_individual, recombine_individuals
+from compute_graph.evolution.initialize import random_graph_mut_hps, random_individual
+from compute_graph.graph.graph import CompiledGraph, OperatorNode, SubGraphNode, make_graph, show_graph
+from compute_graph.type_defs import EvolutionConfig
+from compute_graph.variation_ops import mutate_graph, mutate_individual, recombine_individuals
 
 # %%
 graph_spec = {

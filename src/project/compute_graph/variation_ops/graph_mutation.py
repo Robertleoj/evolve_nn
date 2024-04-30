@@ -7,11 +7,11 @@ from typing import Callable
 
 import networkx as nx
 
-import project.graph.graph as graph_
-import project.graph.nodes as nodes_
-from project.type_defs import GraphMutHP
-from project.utils.graph_utils import are_all_reachable
-from project.utils.rand_utils import weighted_random
+import compute_graph.graph.graph as graph_
+import compute_graph.graph.nodes as nodes_
+from compute_graph.type_defs import GraphMutHP
+from compute_graph.utils.graph_utils import are_all_reachable
+from compute_graph.utils.rand_utils import weighted_random
 
 DEFAULT_NUM_TRIES = 5
 

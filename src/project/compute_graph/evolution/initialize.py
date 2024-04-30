@@ -1,10 +1,10 @@
 import random
 
-import project.graph.graph as graph_
-import project.graph.nodes as nodes_
-from project.evolution.individual import Individual
-from project.type_defs import EvolutionConfig, GraphMutHP, TrainingHP
-from project.variation_ops.graph_mutation import graph_mutation_functions, mutate_graph
+import compute_graph.graph.graph as graph_
+import compute_graph.graph.nodes as nodes_
+from compute_graph.evolution.individual import Individual
+from compute_graph.type_defs import EvolutionConfig, GraphMutHP, TrainingHP
+from compute_graph.variation_ops.graph_mutation import graph_mutation_functions, mutate_graph
 
 
 def random_graph_mut_hps(evolution_config: EvolutionConfig) -> GraphMutHP:

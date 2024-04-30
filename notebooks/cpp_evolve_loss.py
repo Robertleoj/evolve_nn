@@ -25,15 +25,15 @@ from timeit import default_timer
 
 import matplotlib.pyplot as plt
 import numpy as np
-import project.foundation.graph as cpp_graph_
-import project.foundation.train as cpp_train_
-import project.graph.compiled as compiled_
-import project.graph.graph as graph_
+import compute_graph.foundation.graph as cpp_graph_
+import compute_graph.foundation.train as cpp_train_
+import compute_graph.graph.compiled as compiled_
+import compute_graph.graph.graph as graph_
 from IPython.display import display
-from project.evolution.initialize import initialize_population
-from project.evolution.select_and_mutate import select_and_mutate
-from project.type_defs import EvolutionConfig
-from project.utils.paths import get_results_dir
+from compute_graph.evolution.initialize import initialize_population
+from compute_graph.evolution.select_and_mutate import select_and_mutate
+from compute_graph.type_defs import EvolutionConfig
+from compute_graph.utils.paths import get_results_dir
 
 # %%
 evolution_config = EvolutionConfig(

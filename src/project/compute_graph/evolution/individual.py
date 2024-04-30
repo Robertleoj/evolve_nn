@@ -1,7 +1,7 @@
 from dataclasses import dataclass
 
-from project.graph.graph import Graph
-from project.type_defs import GraphMutHP, TrainingHP
+from compute_graph.graph.graph import Graph
+from compute_graph.type_defs import GraphMutHP, TrainingHP
 
 
 @dataclass

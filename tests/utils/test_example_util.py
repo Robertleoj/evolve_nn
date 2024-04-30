@@ -1,4 +1,4 @@
-from project.utils.example import example_util
+from compute_graph.utils.example import example_util
 
 
 def test_example_util() -> None:
