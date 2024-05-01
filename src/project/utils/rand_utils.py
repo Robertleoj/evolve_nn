@@ -12,3 +12,9 @@ def weighted_random(min_val: int, max_val: int, scale: float = 2.0) -> int:
     random_int = min_val + int(random_exp) % (max_val - min_val + 1)
 
     return random_int
+
+def softmax(x: np.ndarray) -> np.ndarray:
+    shift_x = x - np.max(x)
+    exps = np.exp(shift_x)
+    softmax_output = exps / np.sum(exps)
+    return softmax_output

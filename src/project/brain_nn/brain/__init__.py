@@ -23,6 +23,11 @@ class UpdateWeights:
 def relu(x: np.ndarray) -> np.ndarray:
     return np.maximum(0, x)
 
+def layer_norm(x: np.ndarray, eps: float = 1e-6) -> np.ndarray:
+    mean = x.mean(axis=-1, keepdims=True)
+    std = x.std(axis=-1, keepdims=True)
+    return (x - mean) / (std + eps)
+
 
 def attention(x: np.ndarray, weights: AttentionMatrices) -> np.ndarray:
     """Perform single-head attention on x with weights
@@ -49,21 +54,14 @@ def attention(x: np.ndarray, weights: AttentionMatrices) -> np.ndarray:
     return attention_probs @ v
 
 def get_update_coefficients(x: np.ndarray, weights: UpdateWeights) -> np.ndarray:
-    """Compute update coefficients
-
-    Args:
-        x: a 2D array of shape N x D
-        weights: The update weights
-    
-    Returns:
-        A 2D array of shape N x D
-    """
-
     h = x
-    for attention_weights, linear in weights.weights:
-        h = attention(h, attention_weights) + h
-        h = h @ linear + h
-        h = relu(h)
+    for i, (attention_weights, linear) in enumerate(weights.weights):
+        attention_output = attention(h, attention_weights)
+        h = layer_norm(h + attention_output)  # Apply layer normalization after adding residual connection
+        linear_output = h @ linear
+        h = layer_norm(h + linear_output)  # Another layer normalization after the second residual connection
+        if i < len(weights.weights) - 1:
+            h = relu(h)
 
     return h
 
@@ -139,7 +137,7 @@ class BrainNode(Node):
                 weight_update_rate
             )
 
-        return relu(h)
+        return np.tanh(h)
 
 class InputNode(Node):
     pass
@@ -148,7 +146,7 @@ class InputNode(Node):
 @dataclass
 class Brain:
     id_to_node: dict[str, Node]
-    reverse_adj_list: dict[str, set[str]]
+    reverse_adj_list: dict[str, list[str]]
 
     input_nodes: list[str]
     response_input_nodes: list[str]
@@ -162,7 +160,12 @@ class Brain:
 
     num_transmitters: int
 
-    def step(self, inputs: list[np.ndarray], last_responses: list[np.ndarray]) -> list[np.ndarray]:
+    def clear_state(self) -> None:
+        for node_id in self.id_to_node:
+            if node_id in self.curr_outputs:
+                del self.curr_outputs[node_id]
+
+    def step(self, inputs: list[np.ndarray], last_responses: list[np.ndarray], update:bool=True) -> list[np.ndarray]:
         for node_id, x in zip(self.input_nodes, inputs):
             self.curr_outputs[node_id] = x
 
@@ -178,7 +181,10 @@ class Brain:
                 self.curr_outputs[adj_node_id] for adj_node_id in self.reverse_adj_list[node_id]
             ]
 
-            node_output = node.forward(node_inputs, self.update_weights, 0.01)
+            if update:
+                node_output = node.forward(node_inputs, self.update_weights, 0.01)
+            else:
+                node_output = node.forward(node_inputs)
             self.curr_outputs[node_id] = node_output
 
         outputs = []
@@ -194,18 +200,19 @@ class Brain:
 
     def add_edge(self, edge: tuple[str, str]) -> None:
         adj_node_id, node_id = edge
-        self.reverse_adj_list[node_id].add(adj_node_id)
+        self.reverse_adj_list[node_id].append(adj_node_id)
         self.recalibrate()
 
     def add_node(self, in_neighbors: list[str], out_neighbors: list[str]) -> None:
         node_id = str(uuid4())
         self.id_to_node[node_id] = BrainNode(len(in_neighbors), self.num_transmitters)
+        self.reverse_adj_list[node_id] = []
 
         for in_neighbor in in_neighbors:
-            self.reverse_adj_list[in_neighbor].add(node_id)
+            self.reverse_adj_list[in_neighbor].append(node_id)
 
         for out_neighbor in out_neighbors:
-            self.reverse_adj_list[node_id].add(out_neighbor)
+            self.reverse_adj_list[node_id].append(out_neighbor)
 
         self.recalibrate()
     
@@ -217,6 +224,7 @@ class Brain:
                 self.reverse_adj_list[node_iter_id].remove(node_id)
 
         del self.id_to_node[node_id]
+        del self.reverse_adj_list[node_id]
 
         self.recalibrate()
 
@@ -307,9 +315,17 @@ def make_brain(
     # the aux node has num_inputs + num_response_input_nodes inputs
     id_to_node[aux_node_id] = BrainNode(num_inputs + num_response_input_nodes, num_transmitters)
 
+    
+    for node_id in id_to_node:
+        if node_id not in reverse_adj_list:
+            reverse_adj_list[node_id] = set()
+
     return Brain(
         id_to_node=id_to_node,
-        reverse_adj_list=reverse_adj_list,
+        reverse_adj_list={
+            node_id: list(neighbors)
+            for node_id, neighbors in reverse_adj_list.items()
+        },
         input_nodes=input_node_ids,
         response_input_nodes=response_input_node_ids,
         output_nodes=output_node_ids,
@@ -320,8 +336,9 @@ def make_brain(
     )
     
 
+
     
-def show_brain(brain: Brain) -> None:
+def get_brain_svg(brain: Brain) -> str:
     dot = Digraph()
     
     for node_id, node in brain.id_to_node.items():
@@ -344,8 +361,11 @@ def show_brain(brain: Brain) -> None:
             dot.edge(adj_node_id, node_id)
 
     svg = dot.pipe(format='svg').decode('utf-8')
-    display(SVG(svg))
+    return svg
 
+def show_brain(brain: Brain) -> None:
+    svg = get_brain_svg(brain)
+    display(SVG(svg))
         
 
 def is_valid(brain: Brain) -> tuple[bool, str]:
@@ -359,5 +379,27 @@ def is_valid(brain: Brain) -> tuple[bool, str]:
     # all output nodes must be reachable by at least one input node
     if not are_all_reachable(g, set(brain.input_nodes), set(brain.output_nodes)):
         return False, 'Not all output nodes are reachable by input nodes'
+
+    # input nodes cannot have any incoming edges
+    for input_node in brain.input_nodes + brain.response_input_nodes:
+        if len(brain.reverse_adj_list[input_node]) > 0:
+            return False, 'Input nodes cannot have incoming edges'
+
+    # all nodes that appear in the reverse adj list must be in the id_to_node dict
+    for node_id, adj_nodes in brain.reverse_adj_list.items():
+        for adj_node_id in adj_nodes:
+            if adj_node_id not in brain.id_to_node:
+                return False, 'Node in reverse adj list not in id_to_node dict'
+
+    # no double edges
+    for node_id, adj_nodes in brain.reverse_adj_list.items():
+        if len(set(adj_nodes)) != len(adj_nodes):
+            return False, 'Double edges in graph'
+
+    # all brain nodes must have at least one input
+    for node_id in brain.brain_nodes():
+        if len(brain.reverse_adj_list[node_id]) == 0:
+            return False, 'Brain node has no inputs'
+
 
     return True, 'Graph is valid'

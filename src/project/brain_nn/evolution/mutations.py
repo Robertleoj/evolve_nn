@@ -1,4 +1,4 @@
-from project.brain_nn.brain import Brain, is_valid
+from project.brain_nn.brain import AttentionMatrices, Brain, is_valid, UpdateWeights
 import numpy as np
 import random
 from copy import deepcopy
@@ -106,6 +106,31 @@ def mutate_update_weights(brain: Brain) -> tuple[Brain, bool]:
 
     return new_brain, True
     
+
+def recombine_update_weights(weights1:UpdateWeights , weights2: UpdateWeights) -> UpdateWeights:
+    new_weights = deepcopy(weights1)
+
+    for i, ((aw1, lw1), (aw2, lw2)) in enumerate(zip(weights1.weights, weights2.weights)):
+        new_linear = (lw1 + lw2) / 2
+        new_k_w = (aw1.k_w + aw2.k_w) / 2
+        new_q_w = (aw1.q_w + aw2.q_w) / 2
+        new_v_w = (aw1.v_w + aw2.v_w) / 2
+
+        new_aw = AttentionMatrices(
+            k_w=new_k_w,v_w=new_v_w,q_w=new_q_w
+        )
+
+        new_weights.weights[i] = (new_aw, new_linear)
+
+    return new_weights
+    
+
+def recombine_brains(brain1: Brain, brain2: Brain) -> Brain:
+    new_brain = deepcopy(brain1)
+    new_brain.update_weights = recombine_update_weights(brain1.update_weights, brain2.update_weights)
+    new_brain.update_rate = (brain1.update_rate + brain2.update_rate) / 2
+    return new_brain
+
 
 
 def mutate_brain(brain: Brain) -> Brain:
