@@ -19,7 +19,9 @@ graphviz = "^0.20.3"
 einops = "^0.7.0"
 tqdm = "^4.66.2"
 torch = {version = "^2.2.2+cpu", source = "pytorch_cpu"}
-gymnasium = {extras = ["classic-control"], version = "^0.29.1"}
+gymnasium = {extras = ["box2d"], version = "^0.29.1"}
+dill = "^0.3.8"
+moviepy = "^1.0.3"
 
 [tool.poetry.group.dev.dependencies]
 jupyterlab = "^3.6.2"

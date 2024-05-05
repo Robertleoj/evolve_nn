@@ -2,6 +2,7 @@ import numpy as np
 from dataclasses import dataclass
 from uuid import uuid4
 from collections import defaultdict
+import dill
 from graphviz import Digraph
 import networkx as nx
 from IPython.display import SVG, display
@@ -252,6 +253,14 @@ class Brain:
 
         return nodes
 
+    def forward_adj_list(self) -> dict[str, list[str]]:
+        adj_list = defaultdict(list)
+        for node_id, adj_nodes in self.reverse_adj_list.items():
+            for adj_node_id in adj_nodes:
+                adj_list[adj_node_id].append(node_id)
+
+        return adj_list
+
     def get_nx(self) -> nx.DiGraph:
         g = nx.DiGraph()
         for node_id in self.id_to_node.keys():
@@ -401,5 +410,24 @@ def is_valid(brain: Brain) -> tuple[bool, str]:
         if len(brain.reverse_adj_list[node_id]) == 0:
             return False, 'Brain node has no inputs'
 
+    # all brain nodes except for output nodes must have at least one output
+    # forward_adj_list = brain.forward_adj_list()
+    # for node_id in brain.brain_nodes():
+    #     if node_id in brain.output_nodes:
+    #         continue
+
+    #     if len(forward_adj_list[node_id]) == 0:
+    #         return False, 'Brain node has no outputs'
+
 
     return True, 'Graph is valid'
+
+    
+def save_population(population: list[Brain], path: str) -> None:
+    with open(path, 'wb') as f:
+        dill.dump(population, f)
+
+        
+def load_population(path: str) -> list[Brain]:
+    with open(path, 'rb') as f:
+        return dill.load(f)
